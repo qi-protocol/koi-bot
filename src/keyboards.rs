@@ -20,7 +20,7 @@ pub(crate) fn menu_keyboard() -> InlineKeyboardMarkup {
 }
 
 pub(crate) fn buy_keyboard() -> InlineKeyboardMarkup {
-    create_keyboard(vec!["BTC", "ETH", "LTC", "BCH", "Main Menu", "Close"])
+    create_keyboard(vec!["Wallet", "ETH", "LTC", "BCH", "Main Menu", "Close"])
 }
 
 pub(crate) fn sell_keyboard() -> InlineKeyboardMarkup {

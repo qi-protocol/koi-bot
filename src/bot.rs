@@ -1,28 +1,32 @@
-use crate::keyboards::menu_keyboard;
+use crate::keyboards::{buy_keyboard, menu_keyboard};
 use crate::tg_error;
 use crate::utils;
 use teloxide::{
     dispatching::UpdateFilterExt,
     dptree,
     error_handlers::LoggingErrorHandler,
-    payloads::{EditMessageTextSetters, SendMessageSetters},
+    payloads::SendMessageSetters,
     prelude::{Dispatcher, Requester},
     types::{
-        CallbackQuery, InlineKeyboardButton, InlineKeyboardMarkup, Me, Message, ParseMode, Update,
+        CallbackQuery, ChatId, InlineKeyboardButton, InlineKeyboardMarkup, Me, Message, MessageId,
+        ParseMode, Update,
     },
     utils::command::BotCommands,
     Bot,
 };
+use tokio::time::{sleep, Duration};
 
 #[derive(BotCommands, Clone)]
 #[command(rename_rule = "lowercase", description = "Supported commands:")]
 enum Command {
-    #[command(description = "Show this text")]
+    #[command(description = "Show Available Commands")]
     Help,
     #[command(description = "Main Menu")]
     Menu,
     #[command(description = "Display all wallet addresses")]
     Wallets,
+    #[command(description = "Start the bot")]
+    Start,
 }
 
 #[derive(Clone, Debug)]
@@ -90,12 +94,20 @@ async fn message_handler(bot: Bot, msg: Message, me: Me) -> Result<(), tg_error:
             Ok(Command::Menu) => {
                 let keyboard = menu_keyboard();
                 let menu_msg = utils::get_on_chain_info().await?;
-                let _ = bot
+
+                // send the new message
+                let message_sent = bot
                     .send_message(msg.chat.id, menu_msg)
                     .parse_mode(ParseMode::MarkdownV2)
                     .reply_markup(keyboard)
-                    .await
-                    .map_err(|e| tg_error::TgError::TeloxideRequest(e));
+                    .await?;
+                let last_message_id = message_sent.id;
+                let _ =
+                    delete_previous_messages(&bot, msg.chat.id.0, last_message_id.0 - 1).await?;
+            }
+            Ok(Command::Start) => {
+                // todp: add start message
+                todo!()
             }
             Ok(Command::Wallets) => {
                 todo!()
@@ -115,30 +127,60 @@ async fn message_handler(bot: Bot, msg: Message, me: Me) -> Result<(), tg_error:
     Ok(())
 }
 
-#[allow(clippy::redundant_closure)]
+/// Helper function to delete 10 previous messages
+async fn delete_previous_messages(
+    bot: &Bot,
+    chat_id: i64,
+    last_message_id: i32,
+) -> Result<(), tg_error::TgError> {
+    log::info!("last message id: {}", last_message_id);
+    for message_id in (last_message_id - 10..=last_message_id).rev() {
+        log::info!("last message id: {}", message_id);
+        sleep(Duration::from_millis(100)).await;
+        let _ = bot
+            .delete_message(ChatId(chat_id), MessageId(message_id))
+            .await;
+    }
+    Ok(())
+}
+
+/// Upon a user clicks the "Main Menu", it'll clear the text and show the menu again
 async fn handle_menu_callback(bot: &Bot, q: &CallbackQuery) -> Result<(), tg_error::TgError> {
     let keyboard = menu_keyboard();
     bot.answer_callback_query(&q.id).await?;
-    if let Some(Message { id, chat, .. }) = &q.message {
+    if let Some(Message { chat, .. }) = &q.message {
         let menu_msg = utils::get_on_chain_info().await?;
-        let _ = bot
-            .edit_message_text(chat.id, *id, menu_msg)
+
+        let message_sent = bot
+            .send_message(chat.id, menu_msg)
             .parse_mode(ParseMode::MarkdownV2)
             .reply_markup(keyboard)
-            .await
-            .map_err(|e| tg_error::TgError::TeloxideRequest(e));
+            .await?;
+        let last_message_id = message_sent.id;
+        let _ = delete_previous_messages(bot, chat.id.0, last_message_id.0 - 1).await?;
     };
     Ok(())
 }
 
-#[allow(clippy::redundant_closure)]
+async fn handle_buy_callback(bot: &Bot, q: &CallbackQuery) -> Result<(), tg_error::TgError> {
+    let keyboard = buy_keyboard();
+    bot.answer_callback_query(&q.id).await?;
+    if let Some(Message { id: _id, chat, .. }) = &q.message {
+        let menu_msg = utils::get_on_chain_info().await?;
+        // todo: add custom info for buy
+        let _ = bot
+            .send_message(chat.id, menu_msg)
+            .parse_mode(ParseMode::MarkdownV2)
+            .reply_markup(keyboard)
+            .await?;
+    }
+    Ok(())
+}
+
 async fn handle_close_callback(bot: &Bot, q: &CallbackQuery) -> Result<(), tg_error::TgError> {
     bot.answer_callback_query(&q.id).await?;
     if let Some(Message { id, chat, .. }) = &q.message {
-        let _ = bot
-            .delete_message(chat.id, *id)
-            .await
-            .map_err(|e| tg_error::TgError::TeloxideRequest(e));
+        let _ = bot.delete_message(chat.id, *id).await?;
     };
     Ok(())
 }
@@ -147,7 +189,7 @@ async fn handle_close_callback(bot: &Bot, q: &CallbackQuery) -> Result<(), tg_er
 async fn callback_handler(bot: Bot, q: CallbackQuery) -> Result<(), tg_error::TgError> {
     if let Some(action) = &q.data {
         match action.as_str() {
-            "Buy" | "Sell" | "Limit Buy" | "Limit Sell" => {
+            "Sell" | "Limit Buy" | "Limit Sell" => {
                 let keyboard = make_keyboard(action);
                 let text = format!("Choose an option for {}:", action);
                 bot.answer_callback_query(q.id).await?;
@@ -159,6 +201,7 @@ async fn callback_handler(bot: Bot, q: CallbackQuery) -> Result<(), tg_error::Tg
                         .map_err(|e| tg_error::TgError::TeloxideRequest(e));
                 }
             }
+            "Buy" => handle_buy_callback(&bot, &q).await?,
             "Main Menu" => handle_menu_callback(&bot, &q).await?,
             "Close" => handle_close_callback(&bot, &q).await?,
             _ => {
