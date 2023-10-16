@@ -1,6 +1,7 @@
 mod bot;
 #[allow(dead_code)]
 mod keyboards;
+mod requests;
 mod tg_error;
 mod utils;
 

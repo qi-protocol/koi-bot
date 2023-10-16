@@ -13,3 +13,6 @@ tokio = { version =  "1.8", features = ["rt-multi-thread", "macros"] }
 anyhow = "1.0.75"
 ethers = "2.0.10"
 dotenv = "0.15.0"
+hashbrown = "0.14.1"
+parking_lot = "0.12.1"
+lazy_static = "1.4.0"
