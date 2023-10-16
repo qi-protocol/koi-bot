@@ -1,4 +1,4 @@
-use crate::keyboards::{buy_keyboard, menu_keyboard};
+use crate::keyboards::{buy_keyboard, menu_keyboard, BuyButtons};
 use crate::requests::SendBuyTxRequest;
 use crate::tg_error;
 use crate::utils;
@@ -9,8 +9,8 @@ use teloxide::{
     payloads::{EditMessageTextSetters, SendMessageSetters},
     prelude::{Dispatcher, Requester},
     types::{
-        CallbackQuery, ChatId, InlineKeyboardButton, InlineKeyboardMarkup, Me, Message, MessageId,
-        ParseMode, Update,
+        CallbackQuery, ChatId, InlineKeyboardButton, InlineKeyboardButtonKind,
+        InlineKeyboardMarkup, Me, Message, MessageId, ParseMode, Update,
     },
     utils::command::BotCommands,
     Bot,
@@ -103,6 +103,7 @@ async fn message_callback(bot: Bot, msg: Message, me: Me) -> Result<(), tg_error
                     .parse_mode(ParseMode::MarkdownV2)
                     .reply_markup(keyboard)
                     .await?;
+                log::info!("message sent: {:?}", message_sent);
 
                 // delete previous messages
                 let last_message_id = message_sent.id;
@@ -152,6 +153,7 @@ async fn delete_previous_messages(
 
 /// Upon a user clicks the "Main Menu", it'll clear the text and show the menu again
 async fn handle_menu_callback(bot: &Bot, q: &CallbackQuery) -> Result<(), tg_error::TgError> {
+    log::info!("handle_menu_callback");
     let keyboard = menu_keyboard();
     bot.answer_callback_query(&q.id).await?;
     if let Some(Message { chat, .. }) = &q.message {
@@ -223,18 +225,69 @@ fn find_keyboard_from_callback(q: &CallbackQuery) -> anyhow::Result<&InlineKeybo
 
 async fn handle_wallet_callback(bot: &Bot, q: &CallbackQuery) -> Result<(), tg_error::TgError> {
     bot.answer_callback_query(&q.id).await?;
-    if let Some(wallet) = &q.data {
+    if let Some(button) = &q.data {
         if let Some(Message { id, chat, .. }) = &q.message {
             let menu_msg = utils::get_on_chain_info().await?;
-            let keyboard = match (find_sub_menu_type_from_callback(q)?, wallet.as_str()) {
+            let keyboard = match (find_sub_menu_type_from_callback(q)?, button.as_str()) {
                 (SubMenuType::SendBuyTx, "Wallet 1") => {
-                    buy_keyboard(true, false, true, false, false)?
+                    // Gets current keyboard layout
+                    let keyboard = find_keyboard_from_callback(q)?.clone();
+                    let mut new_keyboard = keyboard.clone();
+
+                    // add the new button
+                    let button = BuyButtons::new(button);
+                    let new_button_text = button.toggle();
+
+                    // Change the text to toggled value
+                    if let Some(button) = new_keyboard
+                        .inline_keyboard
+                        .get_mut(3)
+                        .and_then(|row| row.get_mut(0))
+                    {
+                        button.text = new_button_text.to_string();
+                    }
+
+                    new_keyboard
                 }
                 (SubMenuType::SendBuyTx, "Wallet 2") => {
-                    buy_keyboard(true, false, false, true, false)?
+                    // Gets current keyboard layout
+                    let keyboard = find_keyboard_from_callback(q)?.clone();
+                    let mut new_keyboard = keyboard.clone();
+
+                    // add the new button
+                    let button = BuyButtons::new(button);
+                    let new_button_text = button.toggle();
+
+                    // Change the text to toggled value
+                    if let Some(button) = new_keyboard
+                        .inline_keyboard
+                        .get_mut(3)
+                        .and_then(|row| row.get_mut(1))
+                    {
+                        button.text = new_button_text.to_string();
+                    }
+
+                    new_keyboard
                 }
                 (SubMenuType::SendBuyTx, "Wallet 3") => {
-                    buy_keyboard(true, false, false, false, true)?
+                    // Gets current keyboard layout
+                    let keyboard = find_keyboard_from_callback(q)?.clone();
+                    let mut new_keyboard = keyboard.clone();
+
+                    // add the new button
+                    let button = BuyButtons::new(button);
+                    let new_button_text = button.toggle();
+
+                    // Change the text to toggled value
+                    if let Some(button) = new_keyboard
+                        .inline_keyboard
+                        .get_mut(3)
+                        .and_then(|row| row.get_mut(2))
+                    {
+                        button.text = new_button_text.to_string();
+                    }
+
+                    new_keyboard
                 }
                 (SubMenuType::SendSellTx, _) => {
                     todo!(); // Handle the SendSellTx case here
@@ -247,6 +300,47 @@ async fn handle_wallet_callback(bot: &Bot, q: &CallbackQuery) -> Result<(), tg_e
                 .parse_mode(ParseMode::MarkdownV2)
                 .reply_markup(keyboard)
                 .await?;
+        }
+    }
+    Ok(())
+}
+
+// Note: any value changed to the keyboard layout will affect this function
+async fn handle_private_tx_callback(bot: &Bot, q: &CallbackQuery) -> Result<(), tg_error::TgError> {
+    bot.answer_callback_query(&q.id).await?;
+    match find_sub_menu_type_from_callback(q)? {
+        SubMenuType::SendBuyTx => {
+            if let Some(button) = &q.data {
+                if let Some(Message { id, chat, .. }) = &q.message {
+                    let menu_msg = utils::get_on_chain_info().await?;
+
+                    // Gets current keyboard layout
+                    let keyboard = find_keyboard_from_callback(q)?.clone();
+                    let mut new_keyboard = keyboard.clone();
+                    let button = BuyButtons::new(button);
+                    let new_button_text = button.toggle();
+
+                    // Change the text to toggled value
+                    if let Some(button) = new_keyboard
+                        .inline_keyboard
+                        .get_mut(1)
+                        .and_then(|row| row.get_mut(0))
+                    {
+                        button.text = new_button_text.to_string();
+                        button.kind =
+                            InlineKeyboardButtonKind::CallbackData(new_button_text.to_string());
+                    }
+
+                    // Edit the message with the new keyboard
+                    bot.edit_message_text(chat.id, *id, menu_msg)
+                        .parse_mode(ParseMode::MarkdownV2)
+                        .reply_markup(new_keyboard)
+                        .await?;
+                }
+            }
+        }
+        SubMenuType::SendSellTx => {
+            todo!()
         }
     }
     Ok(())
@@ -268,10 +362,14 @@ async fn handle_send_tx_callback(bot: &Bot, q: &CallbackQuery) -> Result<(), tg_
     Ok(())
 }
 
+fn matching_sub_menu(_bot: &Bot, q: &CallbackQuery) -> Option<SubMenuType> {
+    find_sub_menu_type_from_callback(q).ok()
+}
+
 async fn button_callback(bot: Bot, q: CallbackQuery) -> Result<(), tg_error::TgError> {
     if let Some(action) = &q.data {
         match action.as_str() {
-            // main-menu buttons
+            // main-menu
             "Sell" | "Limit Buy" | "Limit Sell" => {
                 let keyboard = make_keyboard(action);
                 let text = format!("Choose an option for {}:", action);
@@ -284,13 +382,22 @@ async fn button_callback(bot: Bot, q: CallbackQuery) -> Result<(), tg_error::TgE
                 }
             }
             "Buy" => handle_buy_callback(&bot, &q).await?,
-            "🏠 Main Menu" => handle_menu_callback(&bot, &q).await?,
-            "❌Close" => handle_close_callback(&bot, &q).await?,
+            "Main Menu" => handle_menu_callback(&bot, &q).await?,
+            "Close" => handle_close_callback(&bot, &q).await?,
 
-            // sub-menu buttons
-            _ => match action.as_str() {
-                "Send Buy Tx" | "Send Sell Tx" => handle_send_tx_callback(&bot, &q).await?,
-                "Wallet 1" | "Wallet 2" | "Wallet 3" => handle_wallet_callback(&bot, &q).await?,
+            // sub-menus
+            _ => match matching_sub_menu(&bot, &q) {
+                Some(SubMenuType::SendBuyTx) => match BuyButtons::new(action) {
+                    BuyButtons::SendBuyTx => handle_send_tx_callback(&bot, &q).await?,
+                    BuyButtons::PrivateTx(_) => handle_private_tx_callback(&bot, &q).await?,
+                    BuyButtons::Wallet1(_) | BuyButtons::Wallet2(_) | BuyButtons::Wallet3(_) => {
+                        handle_wallet_callback(&bot, &q).await?
+                    }
+                    _ => {}
+                },
+                Some(SubMenuType::SendSellTx) => {
+                    todo!()
+                }
                 _ => {}
             },
         }

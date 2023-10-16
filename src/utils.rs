@@ -17,13 +17,13 @@ impl OnChainInfoQuery {
         dotenv().ok();
         let provider = match chain_id {
             137 => {
-                let rpc_url = std::env::var("ETH_RPC_URL")?;
+                let rpc_url = std::env::var("POLYGON_RPC_URL")?;
                 let provider = Provider::<Http>::try_from(rpc_url)?;
                 log::info!("Connected to Polygon mainnet");
                 provider
             }
             1 => {
-                let rpc_url = std::env::var("POLYGON_RPC_URL")?;
+                let rpc_url = std::env::var("ETH_RPC_URL")?;
                 let provider = Provider::<Http>::try_from(rpc_url)?;
                 log::info!("Connected to Ethereum mainnet");
                 provider

@@ -1,5 +1,64 @@
 use teloxide::types::{InlineKeyboardButton, InlineKeyboardMarkup};
 
+#[derive(Debug, Clone)]
+pub(crate) enum BuyButtons<'a> {
+    SendBuyTx,
+    SendSellTx,
+    MainMenu,
+    Close,
+    PrivateTx(&'a str),
+    Rebate(&'a str),
+    Wallet1(&'a str),
+    Wallet2(&'a str),
+    Wallet3(&'a str),
+    Buy,
+    Receive,
+    BuyAmount,
+    EstimatedReceivedAmount,
+}
+
+impl<'a> BuyButtons<'a> {
+    pub(crate) fn new(text: &'a str) -> Self {
+        match text {
+            t if t == "Send Buy Tx" || t == add_emoji("Send Buy Tx").as_str() => Self::SendBuyTx,
+            t if t == "Send Sell Tx" || t == add_emoji("Send Sell Tx").as_str() => Self::SendSellTx,
+            t if t == "Main Menu" || t == add_emoji("Main Menu").as_str() => Self::MainMenu,
+            t if t == "Close" || t == add_emoji("Close").as_str() => Self::Close,
+            t if t == "Private Tx" || t == add_emoji("Private Tx").as_str() => {
+                Self::PrivateTx(text)
+            }
+            t if t == "Rebate" || t == add_emoji("Rebate").as_str() => Self::Rebate(text),
+            t if t == "Wallet 1" || t == add_emoji("Wallet 1").as_str() => Self::Wallet1(text),
+            t if t == "Wallet 2" || t == add_emoji("Wallet 2").as_str() => Self::Wallet2(text),
+            t if t == "Wallet 3" || t == add_emoji("Wallet 3").as_str() => Self::Wallet3(text),
+            "Buy" => Self::Buy,
+            "Receives" => Self::Receive,
+            "Buy Amount" => Self::BuyAmount,
+            "Estimated Received Amount" => Self::EstimatedReceivedAmount,
+            _ => Self::SendSellTx,
+        }
+    }
+
+    pub(crate) fn toggle(&self) -> String {
+        match self {
+            Self::PrivateTx(text) => self.toggle_text(text, "Private Tx"),
+            Self::Rebate(text) => self.toggle_text(text, "Rebate"),
+            Self::Wallet1(text) => self.toggle_text(text, "Wallet1"),
+            Self::Wallet2(text) => self.toggle_text(text, "Wallet2"),
+            Self::Wallet3(text) => self.toggle_text(text, "Wallet3"),
+            _ => format!("{:?}", self),
+        }
+    }
+
+    fn toggle_text(&self, current: &str, default: &str) -> String {
+        if current == default {
+            add_emoji(default)
+        } else {
+            default.to_string()
+        }
+    }
+}
+
 /// Default layout for the keyboard
 fn create_keyboard(actions: Vec<&str>) -> InlineKeyboardMarkup {
     let mut keyboard: Vec<Vec<InlineKeyboardButton>> = vec![];
@@ -17,7 +76,7 @@ fn create_keyboard(actions: Vec<&str>) -> InlineKeyboardMarkup {
 }
 
 /// Create the Buy keyboard layout
-/// Note: any change to this function will affect the handle_send_tx function()
+/// Note: any change to this function will affect the handle_send_tx function() and handle_private_tx_callback()
 fn create_buy_keyboard(
     private_tx: bool,
     rebate: bool,
@@ -30,19 +89,10 @@ fn create_buy_keyboard(
     };
 
     let mut keyboard = InlineKeyboardMarkup::default();
-    let add_emoji = |text: &str| match text {
-        "Main Menu" => format!("🏠 {}", text),
-        "Close" => format!("❌ {}", text),
-        "Private Tx" => format!("✅ {}", text),
-        "Rebate" => format!("✅ {}", text),
-        "Wallet 1" => format!("✅ {}", text),
-        "Wallet 2" => format!("✅{}", text),
-        "Wallet 3" => format!("✅ {}", text),
-        _ => text.to_string(),
-    };
 
     // 1st row
     keyboard = keyboard.append_row(vec![
+        // no need to add emoji in the callback value
         InlineKeyboardButton::callback(add_emoji("Main Menu"), "Main Menu".to_owned()),
         InlineKeyboardButton::callback(add_emoji("Close"), "Close".to_owned()),
     ]);
@@ -51,14 +101,14 @@ fn create_buy_keyboard(
     keyboard = keyboard.append_row(vec![
         match private_tx {
             true => {
-                InlineKeyboardButton::callback(add_emoji("Private Tx"), "Private Tx".to_owned())
+                InlineKeyboardButton::callback(add_emoji("Private Tx"), add_emoji("Private Tx"))
             }
             false => {
                 InlineKeyboardButton::callback("Private Tx".to_owned(), "Private Tx".to_owned())
             }
         },
         match rebate {
-            true => InlineKeyboardButton::callback(add_emoji("Rebate"), "Rebate".to_owned()),
+            true => InlineKeyboardButton::callback(add_emoji("Rebate"), add_emoji("Rebate")),
             false => InlineKeyboardButton::callback("Rebate".to_owned(), "Rebate".to_owned()),
         },
     ]);
@@ -73,15 +123,15 @@ fn create_buy_keyboard(
     // Default selection to wallet 1
     keyboard = keyboard.append_row(vec![
         match wallet1 {
-            true => InlineKeyboardButton::callback(add_emoji("Wallet 1"), "Wallet 1".to_owned()),
+            true => InlineKeyboardButton::callback(add_emoji("Wallet 1"), add_emoji("Wallet 1")),
             false => InlineKeyboardButton::callback("Wallet 1".to_owned(), "Wallet 1".to_owned()),
         },
         match wallet2 {
-            true => InlineKeyboardButton::callback(add_emoji("Wallet 2"), "Wallet 2".to_owned()),
+            true => InlineKeyboardButton::callback(add_emoji("Wallet 2"), add_emoji("Wallet 2")),
             false => InlineKeyboardButton::callback("Wallet 2".to_owned(), "Wallet 2".to_owned()),
         },
         match wallet3 {
-            true => InlineKeyboardButton::callback(add_emoji("Wallet 3"), "Wallet 3".to_owned()),
+            true => InlineKeyboardButton::callback(add_emoji("Wallet 3"), add_emoji("Wallet 3")),
             false => InlineKeyboardButton::callback("Wallet 3".to_owned(), "Wallet 3".to_owned()),
         },
     ]);
@@ -112,6 +162,20 @@ fn create_buy_keyboard(
     )]);
 
     Ok(keyboard)
+}
+
+fn add_emoji(text: &str) -> String {
+    let button = match text {
+        "Main Menu" => format!("🏠 {}", text),
+        "Close" => format!("❌ {}", text),
+        "Private Tx" => format!("✅ {}", text),
+        "Rebate" => format!("✅ {}", text),
+        "Wallet 1" => format!("✅ {}", text),
+        "Wallet 2" => format!("✅{}", text),
+        "Wallet 3" => format!("✅ {}", text),
+        _ => text.to_string(),
+    };
+    button
 }
 
 pub(crate) fn buy_keyboard(
