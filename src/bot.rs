@@ -1,21 +1,24 @@
-use crate::keyboards::{buy_keyboard, menu_keyboard, BuyButtons};
-use crate::requests::SendBuyTxRequest;
+use crate::handlers::callback_handlers::{
+    handle_buy_callback, handle_close_callback, handle_menu_callback, handle_private_tx_callback,
+    handle_send_tx_callback, handle_wallet_callback,
+};
+use crate::handlers::{delete_previous_messages, matching_sub_menu, SubMenuType};
+use crate::keyboards::buy_buttons::BuyButtons;
+use crate::keyboards::menu_keyboard;
+use crate::requests::on_chain;
 use crate::tg_error;
-use crate::utils;
 use teloxide::{
     dispatching::UpdateFilterExt,
     dptree,
     error_handlers::LoggingErrorHandler,
-    payloads::{EditMessageTextSetters, SendMessageSetters},
+    payloads::SendMessageSetters,
     prelude::{Dispatcher, Requester},
     types::{
-        CallbackQuery, ChatId, InlineKeyboardButton, InlineKeyboardButtonKind,
-        InlineKeyboardMarkup, Me, Message, MessageId, ParseMode, Update,
+        CallbackQuery, InlineKeyboardButton, InlineKeyboardMarkup, Me, Message, ParseMode, Update,
     },
     utils::command::BotCommands,
     Bot,
 };
-use tokio::time::{sleep, Duration};
 
 #[derive(BotCommands, Clone)]
 #[command(rename_rule = "lowercase", description = "Supported commands:")]
@@ -95,7 +98,7 @@ async fn message_callback(bot: Bot, msg: Message, me: Me) -> Result<(), tg_error
             }
             Ok(Command::Menu) => {
                 let keyboard = menu_keyboard();
-                let menu_msg = utils::get_on_chain_info().await?;
+                let menu_msg = on_chain::get_on_chain_info().await?;
 
                 // send the new message
                 let message_sent = bot
@@ -132,247 +135,6 @@ async fn message_callback(bot: Bot, msg: Message, me: Me) -> Result<(), tg_error
     }
 
     Ok(())
-}
-
-/// Helper function to delete 10 previous messages
-async fn delete_previous_messages(
-    bot: &Bot,
-    chat_id: i64,
-    last_message_id: i32,
-) -> Result<(), tg_error::TgError> {
-    log::info!("last message id: {}", last_message_id);
-    for message_id in (last_message_id - 10..=last_message_id).rev() {
-        log::info!("last message id: {}", message_id);
-        sleep(Duration::from_millis(10)).await;
-        let _ = bot
-            .delete_message(ChatId(chat_id), MessageId(message_id))
-            .await;
-    }
-    Ok(())
-}
-
-/// Upon a user clicks the "Main Menu", it'll clear the text and show the menu again
-async fn handle_menu_callback(bot: &Bot, q: &CallbackQuery) -> Result<(), tg_error::TgError> {
-    log::info!("handle_menu_callback");
-    let keyboard = menu_keyboard();
-    bot.answer_callback_query(&q.id).await?;
-    if let Some(Message { chat, .. }) = &q.message {
-        let menu_msg = utils::get_on_chain_info().await?;
-
-        let message_sent = bot
-            .send_message(chat.id, menu_msg)
-            .parse_mode(ParseMode::MarkdownV2)
-            .reply_markup(keyboard)
-            .await?;
-        let last_message_id = message_sent.id;
-        let _ = delete_previous_messages(bot, chat.id.0, last_message_id.0 - 1).await?;
-    };
-    Ok(())
-}
-
-async fn handle_buy_callback(bot: &Bot, q: &CallbackQuery) -> Result<(), tg_error::TgError> {
-    let keyboard = buy_keyboard(true, false, true, false, false)?;
-    bot.answer_callback_query(&q.id).await?;
-    if let Some(Message { id: _id, chat, .. }) = &q.message {
-        let menu_msg = utils::get_on_chain_info().await?;
-        // todo: add custom info for buy
-        let _ = bot
-            .send_message(chat.id, menu_msg)
-            .parse_mode(ParseMode::MarkdownV2)
-            .reply_markup(keyboard)
-            .await?;
-    }
-    Ok(())
-}
-
-async fn handle_close_callback(bot: &Bot, q: &CallbackQuery) -> Result<(), tg_error::TgError> {
-    bot.answer_callback_query(&q.id).await?;
-    if let Some(Message { id, chat, .. }) = &q.message {
-        let _ = bot.delete_message(chat.id, *id).await?;
-    };
-    Ok(())
-}
-
-#[derive(Debug)]
-enum SubMenuType {
-    SendBuyTx,
-    SendSellTx,
-}
-
-/// Gets the last vec in the larger vec in the InlineKeyboardMarkup. See https://docs.rs/teloxide/latest/teloxide/types/struct.InlineKeyboardMarkup.html
-/// Gets the last button in the last vec, which should either be "Send Buy Tx" or "Send Sell Tx"
-fn find_sub_menu_type_from_callback(q: &CallbackQuery) -> anyhow::Result<SubMenuType> {
-    q.message
-        .as_ref()
-        .and_then(|msg| msg.reply_markup())
-        .and_then(|keyboard| keyboard.inline_keyboard.last())
-        .and_then(|last_vec| last_vec.last())
-        .and_then(|last_button| match last_button.text.as_str() {
-            "Send Buy Tx" => Some(SubMenuType::SendBuyTx),
-            "Send Sell Tx" => Some(SubMenuType::SendSellTx),
-            _ => None,
-        })
-        .ok_or_else(|| anyhow::anyhow!("No valid sub menu found"))
-}
-
-fn find_keyboard_from_callback(q: &CallbackQuery) -> anyhow::Result<&InlineKeyboardMarkup> {
-    q.message
-        .as_ref()
-        .and_then(|msg| msg.reply_markup())
-        .and_then(|keyboard| Some(keyboard))
-        .ok_or_else(|| anyhow::anyhow!("No valid sub menu found"))
-}
-
-async fn handle_wallet_callback(bot: &Bot, q: &CallbackQuery) -> Result<(), tg_error::TgError> {
-    bot.answer_callback_query(&q.id).await?;
-    if let Some(button) = &q.data {
-        if let Some(Message { id, chat, .. }) = &q.message {
-            let menu_msg = utils::get_on_chain_info().await?;
-            let keyboard = match (
-                find_sub_menu_type_from_callback(q)?,
-                BuyButtons::new(button),
-            ) {
-                (SubMenuType::SendBuyTx, BuyButtons::Wallet1(_)) => {
-                    // Gets current keyboard layout
-                    let keyboard = find_keyboard_from_callback(q)?.clone();
-                    let mut new_keyboard = keyboard.clone();
-
-                    // add the new button
-                    let button = BuyButtons::new(button);
-                    let new_button_text = button.toggle();
-
-                    // Change the text to toggled value
-                    if let Some(button) = new_keyboard
-                        .inline_keyboard
-                        .get_mut(3)
-                        .and_then(|row| row.get_mut(0))
-                    {
-                        button.text = new_button_text.to_string();
-                        button.kind =
-                            InlineKeyboardButtonKind::CallbackData(new_button_text.to_string());
-                    }
-
-                    new_keyboard
-                }
-                (SubMenuType::SendBuyTx, BuyButtons::Wallet2(_)) => {
-                    // Gets current keyboard layout
-                    let keyboard = find_keyboard_from_callback(q)?.clone();
-                    let mut new_keyboard = keyboard.clone();
-
-                    // add the new button
-                    let button = BuyButtons::new(button);
-                    let new_button_text = button.toggle();
-
-                    // Change the text to toggled value
-                    if let Some(button) = new_keyboard
-                        .inline_keyboard
-                        .get_mut(3)
-                        .and_then(|row| row.get_mut(1))
-                    {
-                        button.text = new_button_text.to_string();
-                        button.kind =
-                            InlineKeyboardButtonKind::CallbackData(new_button_text.to_string());
-                    }
-
-                    new_keyboard
-                }
-                (SubMenuType::SendBuyTx, BuyButtons::Wallet3(_)) => {
-                    // Gets current keyboard layout
-                    let keyboard = find_keyboard_from_callback(q)?.clone();
-                    let mut new_keyboard = keyboard.clone();
-
-                    // add the new button
-                    let button = BuyButtons::new(button);
-                    let new_button_text = button.toggle();
-
-                    // Change the text to toggled value
-                    if let Some(button) = new_keyboard
-                        .inline_keyboard
-                        .get_mut(3)
-                        .and_then(|row| row.get_mut(2))
-                    {
-                        button.text = new_button_text.to_string();
-                        button.kind =
-                            InlineKeyboardButtonKind::CallbackData(new_button_text.to_string());
-                    }
-
-                    new_keyboard
-                }
-                (SubMenuType::SendSellTx, _) => {
-                    todo!(); // Handle the SendSellTx case here
-                }
-                _ => return Ok(()), // Return early if no match
-            };
-
-            // Edit the message with the determined keyboard
-            bot.edit_message_text(chat.id, *id, menu_msg)
-                .parse_mode(ParseMode::MarkdownV2)
-                .reply_markup(keyboard)
-                .await?;
-        }
-    }
-    Ok(())
-}
-
-// Note: any value changed to the keyboard layout will affect this function
-async fn handle_private_tx_callback(bot: &Bot, q: &CallbackQuery) -> Result<(), tg_error::TgError> {
-    bot.answer_callback_query(&q.id).await?;
-    match find_sub_menu_type_from_callback(q)? {
-        SubMenuType::SendBuyTx => {
-            if let Some(button) = &q.data {
-                if let Some(Message { id, chat, .. }) = &q.message {
-                    let menu_msg = utils::get_on_chain_info().await?;
-
-                    // Gets current keyboard layout
-                    let keyboard = find_keyboard_from_callback(q)?.clone();
-                    let mut new_keyboard = keyboard.clone();
-                    let button = BuyButtons::new(button);
-                    let new_button_text = button.toggle();
-
-                    // Change the text to toggled value
-                    if let Some(button) = new_keyboard
-                        .inline_keyboard
-                        .get_mut(1)
-                        .and_then(|row| row.get_mut(0))
-                    {
-                        button.text = new_button_text.to_string();
-                        button.kind =
-                            InlineKeyboardButtonKind::CallbackData(new_button_text.to_string());
-                    }
-
-                    // Edit the message with the new keyboard
-                    bot.edit_message_text(chat.id, *id, menu_msg)
-                        .parse_mode(ParseMode::MarkdownV2)
-                        .reply_markup(new_keyboard)
-                        .await?;
-                }
-            }
-        }
-        SubMenuType::SendSellTx => {
-            todo!()
-        }
-    }
-    Ok(())
-}
-
-async fn handle_send_tx_callback(bot: &Bot, q: &CallbackQuery) -> Result<(), tg_error::TgError> {
-    bot.answer_callback_query(&q.id).await?;
-    match find_sub_menu_type_from_callback(q)? {
-        SubMenuType::SendBuyTx => {
-            let keyboard = find_keyboard_from_callback(q)?;
-            let _req = SendBuyTxRequest::new(keyboard);
-            log::info!("req: {:?}", _req);
-        }
-        SubMenuType::SendSellTx => {
-            todo!()
-        }
-    }
-
-    Ok(())
-}
-
-fn matching_sub_menu(_bot: &Bot, q: &CallbackQuery) -> Option<SubMenuType> {
-    find_sub_menu_type_from_callback(q).ok()
 }
 
 async fn button_callback(bot: Bot, q: CallbackQuery) -> Result<(), tg_error::TgError> {

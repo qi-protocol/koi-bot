@@ -1,9 +1,9 @@
 mod bot;
+mod handlers;
 #[allow(dead_code)]
 mod keyboards;
 mod requests;
 mod tg_error;
-mod utils;
 
 use log::LevelFilter;
 

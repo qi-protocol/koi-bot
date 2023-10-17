@@ -1,3 +1,4 @@
+use crate::keyboards::add_emoji;
 use teloxide::types::{InlineKeyboardButton, InlineKeyboardMarkup};
 
 #[derive(Debug, Clone)]
@@ -59,22 +60,6 @@ impl<'a> BuyButtons<'a> {
     }
 }
 
-/// Default layout for the keyboard
-fn create_keyboard(actions: Vec<&str>) -> InlineKeyboardMarkup {
-    let mut keyboard: Vec<Vec<InlineKeyboardButton>> = vec![];
-
-    for action in actions.chunks(3) {
-        let row = action
-            .iter()
-            .map(|&action| InlineKeyboardButton::callback(action.to_owned(), action.to_owned()))
-            .collect();
-
-        keyboard.push(row);
-    }
-
-    InlineKeyboardMarkup::new(keyboard)
-}
-
 /// Create the Buy keyboard layout
 /// Note: any change to this function will affect the handle_send_tx function() and handle_private_tx_callback()
 fn create_buy_keyboard(
@@ -96,6 +81,7 @@ fn create_buy_keyboard(
         InlineKeyboardButton::callback(add_emoji("Main Menu"), "Main Menu".to_owned()),
         InlineKeyboardButton::callback(add_emoji("Close"), "Close".to_owned()),
     ]);
+    log::info!("keyboard: {:?}", keyboard);
 
     // 2nd row
     keyboard = keyboard.append_row(vec![
@@ -132,7 +118,7 @@ fn create_buy_keyboard(
         },
         match wallet3 {
             true => InlineKeyboardButton::callback(add_emoji("Wallet 3"), add_emoji("Wallet 3")),
-            false => InlineKeyboardButton::callback("Wallet 3".to_owned(), "Wallet 3".to_owned()),
+            false => InlineKeyboardButton::callback("Wallet 2".to_owned(), "Wallet 3".to_owned()),
         },
     ]);
 
@@ -164,20 +150,6 @@ fn create_buy_keyboard(
     Ok(keyboard)
 }
 
-fn add_emoji(text: &str) -> String {
-    let button = match text {
-        "Main Menu" => format!("🏠 {}", text),
-        "Close" => format!("❌ {}", text),
-        "Private Tx" => format!("✅ {}", text),
-        "Rebate" => format!("✅ {}", text),
-        "Wallet 1" => format!("✅ {}", text),
-        "Wallet 2" => format!("✅{}", text),
-        "Wallet 3" => format!("✅ {}", text),
-        _ => text.to_string(),
-    };
-    button
-}
-
 pub(crate) fn buy_keyboard(
     private_tx: bool,
     rebate: bool,
@@ -189,20 +161,4 @@ pub(crate) fn buy_keyboard(
         Ok(keyboard) => Ok(keyboard),
         _ => Err(anyhow::anyhow!("Error creating keyboard")),
     }
-}
-
-pub(crate) fn menu_keyboard() -> InlineKeyboardMarkup {
-    create_keyboard(vec!["Buy", "Sell", "Limit Buy", "Limit Sell"])
-}
-
-pub(crate) fn sell_keyboard() -> InlineKeyboardMarkup {
-    create_keyboard(vec!["BTC", "ETH", "LTC", "BCH", "Main Menu", "Close"])
-}
-
-pub(crate) fn limit_buy_keyboard() -> InlineKeyboardMarkup {
-    create_keyboard(vec!["BTC", "ETH", "LTC", "BCH", "Main Menu", "Close"])
-}
-
-pub(crate) fn limit_sell_keyboard() -> InlineKeyboardMarkup {
-    create_keyboard(vec!["BTC", "ETH", "LTC", "BCH", "Main Menu", "Close"])
 }
