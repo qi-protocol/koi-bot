@@ -81,7 +81,6 @@ fn create_buy_keyboard(
         InlineKeyboardButton::callback(add_emoji("Main Menu"), "Main Menu".to_owned()),
         InlineKeyboardButton::callback(add_emoji("Close"), "Close".to_owned()),
     ]);
-    log::info!("keyboard: {:?}", keyboard);
 
     // 2nd row
     keyboard = keyboard.append_row(vec![
@@ -118,7 +117,7 @@ fn create_buy_keyboard(
         },
         match wallet3 {
             true => InlineKeyboardButton::callback(add_emoji("Wallet 3"), add_emoji("Wallet 3")),
-            false => InlineKeyboardButton::callback("Wallet 2".to_owned(), "Wallet 3".to_owned()),
+            false => InlineKeyboardButton::callback("Wallet 3".to_owned(), "Wallet 3".to_owned()),
         },
     ]);
 

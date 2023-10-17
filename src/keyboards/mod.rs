@@ -18,15 +18,15 @@ fn create_keyboard(actions: Vec<&str>) -> InlineKeyboardMarkup {
     InlineKeyboardMarkup::new(keyboard)
 }
 
-fn add_emoji(text: &str) -> String {
+pub(crate) fn add_emoji(text: &str) -> String {
     let button = match text {
-        "main menu" => format!("🏠 {}", text),
-        "close" => format!("❌ {}", text),
-        "private tx" => format!("✅ {}", text),
-        "rebate" => format!("✅ {}", text),
-        "wallet 1" => format!("✅ {}", text),
-        "wallet 2" => format!("✅{}", text),
-        "wallet 3" => format!("✅ {}", text),
+        "Main Menu" => format!("🏠 {}", text),
+        "Close" => format!("❌ {}", text),
+        "Private Tx" => format!("✅ {}", text),
+        "Rebate" => format!("✅ {}", text),
+        "Wallet 1" => format!("✅ {}", text),
+        "Wallet 2" => format!("✅{}", text),
+        "Wallet 3" => format!("✅ {}", text),
         _ => text.to_string(),
     };
     button
