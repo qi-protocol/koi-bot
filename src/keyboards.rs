@@ -43,9 +43,9 @@ impl<'a> BuyButtons<'a> {
         match self {
             Self::PrivateTx(text) => self.toggle_text(text, "Private Tx"),
             Self::Rebate(text) => self.toggle_text(text, "Rebate"),
-            Self::Wallet1(text) => self.toggle_text(text, "Wallet1"),
-            Self::Wallet2(text) => self.toggle_text(text, "Wallet2"),
-            Self::Wallet3(text) => self.toggle_text(text, "Wallet3"),
+            Self::Wallet1(text) => self.toggle_text(text, "Wallet 1"),
+            Self::Wallet2(text) => self.toggle_text(text, "Wallet 2"),
+            Self::Wallet3(text) => self.toggle_text(text, "Wallet 3"),
             _ => format!("{:?}", self),
         }
     }

@@ -228,8 +228,11 @@ async fn handle_wallet_callback(bot: &Bot, q: &CallbackQuery) -> Result<(), tg_e
     if let Some(button) = &q.data {
         if let Some(Message { id, chat, .. }) = &q.message {
             let menu_msg = utils::get_on_chain_info().await?;
-            let keyboard = match (find_sub_menu_type_from_callback(q)?, button.as_str()) {
-                (SubMenuType::SendBuyTx, "Wallet 1") => {
+            let keyboard = match (
+                find_sub_menu_type_from_callback(q)?,
+                BuyButtons::new(button),
+            ) {
+                (SubMenuType::SendBuyTx, BuyButtons::Wallet1(_)) => {
                     // Gets current keyboard layout
                     let keyboard = find_keyboard_from_callback(q)?.clone();
                     let mut new_keyboard = keyboard.clone();
@@ -245,11 +248,13 @@ async fn handle_wallet_callback(bot: &Bot, q: &CallbackQuery) -> Result<(), tg_e
                         .and_then(|row| row.get_mut(0))
                     {
                         button.text = new_button_text.to_string();
+                        button.kind =
+                            InlineKeyboardButtonKind::CallbackData(new_button_text.to_string());
                     }
 
                     new_keyboard
                 }
-                (SubMenuType::SendBuyTx, "Wallet 2") => {
+                (SubMenuType::SendBuyTx, BuyButtons::Wallet2(_)) => {
                     // Gets current keyboard layout
                     let keyboard = find_keyboard_from_callback(q)?.clone();
                     let mut new_keyboard = keyboard.clone();
@@ -265,11 +270,13 @@ async fn handle_wallet_callback(bot: &Bot, q: &CallbackQuery) -> Result<(), tg_e
                         .and_then(|row| row.get_mut(1))
                     {
                         button.text = new_button_text.to_string();
+                        button.kind =
+                            InlineKeyboardButtonKind::CallbackData(new_button_text.to_string());
                     }
 
                     new_keyboard
                 }
-                (SubMenuType::SendBuyTx, "Wallet 3") => {
+                (SubMenuType::SendBuyTx, BuyButtons::Wallet3(_)) => {
                     // Gets current keyboard layout
                     let keyboard = find_keyboard_from_callback(q)?.clone();
                     let mut new_keyboard = keyboard.clone();
@@ -285,6 +292,8 @@ async fn handle_wallet_callback(bot: &Bot, q: &CallbackQuery) -> Result<(), tg_e
                         .and_then(|row| row.get_mut(2))
                     {
                         button.text = new_button_text.to_string();
+                        button.kind =
+                            InlineKeyboardButtonKind::CallbackData(new_button_text.to_string());
                     }
 
                     new_keyboard
