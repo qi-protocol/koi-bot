@@ -4,7 +4,7 @@ pub(crate) mod dialogue_handlers;
 use crate::tg_error;
 use teloxide::{
     prelude::Requester,
-    types::{CallbackQuery, ChatId, InlineKeyboardMarkup, MessageId},
+    types::{CallbackQuery, ChatId, InlineKeyboardMarkup, Message, MessageId},
     Bot,
 };
 use tokio::time::{sleep, Duration};
@@ -47,6 +47,18 @@ pub(crate) fn find_sub_menu_type_from_callback(q: &CallbackQuery) -> anyhow::Res
         .ok_or_else(|| anyhow::anyhow!("No valid sub menu found"))
 }
 
+pub(crate) fn find_sub_menu_type_from_message(msg: &Message) -> anyhow::Result<SubMenuType> {
+    msg.reply_markup()
+        .and_then(|keyboard| keyboard.inline_keyboard.last())
+        .and_then(|last_vec| last_vec.last())
+        .and_then(|last_button| match last_button.text.as_str() {
+            "Send Buy Tx" => Some(SubMenuType::SendBuyTx),
+            "Send Sell Tx" => Some(SubMenuType::SendSellTx),
+            _ => None,
+        })
+        .ok_or_else(|| anyhow::anyhow!("No valid sub menu found"))
+}
+
 pub(crate) fn find_keyboard_from_callback(
     q: &CallbackQuery,
 ) -> anyhow::Result<&InlineKeyboardMarkup> {
@@ -54,6 +66,11 @@ pub(crate) fn find_keyboard_from_callback(
         .as_ref()
         .and_then(|msg| msg.reply_markup())
         .and_then(|keyboard| Some(keyboard))
+        .ok_or_else(|| anyhow::anyhow!("No valid sub menu found"))
+}
+
+pub(crate) fn find_keyboard_from_message(msg: &Message) -> anyhow::Result<&InlineKeyboardMarkup> {
+    msg.reply_markup()
         .ok_or_else(|| anyhow::anyhow!("No valid sub menu found"))
 }
 

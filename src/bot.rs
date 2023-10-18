@@ -4,15 +4,21 @@ use crate::handlers::callback_handlers::{
     handle_private_tx_callback, handle_rebate_callback, handle_send_tx_callback,
     handle_wallet_callback,
 };
-use crate::handlers::dialogue_handlers::{address_dialogue_handler, AddressPromptDialogueState};
+use crate::handlers::dialogue_handlers::{
+    address_dialogue_handler, receiving_address_or_token_handler, AddressPromptDialogueState,
+};
 use crate::handlers::{delete_previous_messages, matching_sub_menu, SubMenuType};
 use crate::keyboards::buy_buttons::BuyButtons;
 use crate::keyboards::menu_keyboard;
 use crate::requests::on_chain;
 use crate::tg_error;
+use std::sync::Arc;
 use teloxide::dispatching::HandlerExt;
 use teloxide::{
-    dispatching::{dialogue::InMemStorage, UpdateFilterExt},
+    dispatching::{
+        dialogue::{InMemStorage, Storage},
+        UpdateFilterExt,
+    },
     dptree,
     error_handlers::LoggingErrorHandler,
     payloads::SendMessageSetters,
@@ -53,15 +59,21 @@ impl TgBot {
             .branch(Update::filter_message().endpoint(message_callback))
             .branch(Update::filter_callback_query().endpoint(button_callback))
             .branch(
-                Update::filter_message().enter_dialogue::<Message,InMemStorage<AddressPromptDialogueState>,AddressPromptDialogueState>()
-                .branch(dptree::case![AddressPromptDialogueState::StartAddressPrompt]
-                .endpoint(address_dialogue_handler))
+                Update::filter_message()
+                    .enter_dialogue::<Message,InMemStorage<AddressPromptDialogueState>,AddressPromptDialogueState>()
+                        .branch(dptree::case![AddressPromptDialogueState::StartAddressPrompt]
+                            .endpoint(address_dialogue_handler))
+                        .branch(dptree::case![AddressPromptDialogueState::ReceiveAddress]
+                            .endpoint(receiving_address_or_token_handler))
             );
 
         Dispatcher::builder(self.bot, handler)
             .error_handler(LoggingErrorHandler::with_custom_text(
                 "An error has occurred in the dispatcher",
             ))
+            .dependencies(dptree::deps![
+                InMemStorage::<AddressPromptDialogueState>::new()
+            ])
             .enable_ctrlc_handler()
             .build()
             .dispatch()
@@ -70,52 +82,51 @@ impl TgBot {
     }
 }
 
-async fn message_callback(bot: Bot, msg: Message, me: Me) -> Result<(), tg_error::TgError> {
-    if let Some(text) = msg.text() {
-        match BotCommands::parse(text, me.username()) {
-            Ok(Command::Help) => {
-                let _ = bot
-                    .send_message(msg.chat.id, Command::descriptions().to_string())
-                    .await?;
-            }
-            Ok(Command::Menu) => {
-                let keyboard = menu_keyboard();
-                let menu_msg = on_chain::get_on_chain_info().await?;
+async fn message_callback(
+    bot: Bot,
+    msg: Message,
+    me: Me,
+    storage: Arc<InMemStorage<AddressPromptDialogueState>>,
+) -> Result<(), tg_error::TgError> {
+    let is_in_dialogue = storage.get_dialogue(msg.chat.id).await?.is_some();
+    if !is_in_dialogue {
+        if let Some(text) = msg.text() {
+            match BotCommands::parse(text, me.username()) {
+                Ok(Command::Help) => {
+                    let _ = bot
+                        .send_message(msg.chat.id, Command::descriptions().to_string())
+                        .await?;
+                }
+                Ok(Command::Menu) => {
+                    let keyboard = menu_keyboard();
+                    let menu_msg = on_chain::get_on_chain_info().await?;
 
-                // send the new message
-                let message_sent = bot
-                    .send_message(msg.chat.id, menu_msg)
-                    .parse_mode(ParseMode::MarkdownV2)
-                    .reply_markup(keyboard)
-                    .await?;
-                log::info!("message sent: {:?}", message_sent);
+                    // send the new message
+                    let message_sent = bot
+                        .send_message(msg.chat.id, menu_msg)
+                        .parse_mode(ParseMode::MarkdownV2)
+                        .reply_markup(keyboard)
+                        .await?;
 
-                // delete previous messages
-                let last_message_id = message_sent.id;
-                let _ =
-                    delete_previous_messages(&bot, msg.chat.id.0, last_message_id.0 - 1).await?;
-            }
-            Ok(Command::Start) => {
-                // todp: add start message
-                todo!()
-            }
-            Ok(Command::Wallets) => {
-                todo!()
-            }
-            Ok(Command::History) => {
-                todo!()
-            }
-            Err(_) => {
-                let _ = bot
-                    .send_message(
-                        msg.chat.id,
-                        "Command not found. Press /help to see all supported commands",
-                    )
-                    .await?;
+                    // delete previous messages
+                    let last_message_id = message_sent.id;
+                    let _ = delete_previous_messages(&bot, msg.chat.id.0, last_message_id.0 - 1)
+                        .await?;
+                }
+                Ok(Command::Start) => {
+                    // todp: add start message
+                    todo!()
+                }
+                Ok(Command::Wallets) => {
+                    todo!()
+                }
+                Ok(Command::History) => {
+                    todo!()
+                }
+                Err(_) => {}
             }
         }
     }
-
     Ok(())
 }
 

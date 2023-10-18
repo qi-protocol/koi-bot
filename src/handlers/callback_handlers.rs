@@ -222,6 +222,7 @@ pub(crate) async fn handle_buy_token_callback(
     state: &AddressPromptDialogueState,
     q: &CallbackQuery,
 ) -> Result<(), tg_error::TgError> {
+    bot.answer_callback_query(&q.id).await?;
     if let Some(Message { chat, .. }) = &q.message {
         match state {
             AddressPromptDialogueState::StartAddressPrompt => {
