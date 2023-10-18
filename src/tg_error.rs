@@ -1,4 +1,5 @@
 use std::fmt;
+use teloxide::dispatching::dialogue::InMemStorageError;
 
 #[derive(Debug)]
 #[allow(dead_code)]
@@ -6,6 +7,7 @@ pub enum TgError {
     AnyhowError(anyhow::Error),
     Parse(String),
     TeloxideRequest(teloxide::RequestError),
+    TeloxideInMemStorageError(InMemStorageError),
     UnmatchedQuery(teloxide::types::CallbackQuery),
     NoQueryData(teloxide::types::CallbackQuery),
     NoQueryMessage(teloxide::types::CallbackQuery),
@@ -18,6 +20,9 @@ impl fmt::Display for TgError {
             Self::Parse(ref err) => write!(f, "Parse error: {}", err),
             Self::TeloxideRequest(ref err) => {
                 write!(f, "Telegram request error: {}", err)
+            }
+            Self::TeloxideInMemStorageError(ref err) => {
+                write!(f, "InMemStorage error: {}", err)
             }
             Self::UnmatchedQuery(ref cb_query) => {
                 write!(f, "Could not match callback query: {:?}", cb_query)
@@ -39,6 +44,12 @@ impl fmt::Display for TgError {
 impl From<teloxide::RequestError> for TgError {
     fn from(err: teloxide::RequestError) -> Self {
         Self::TeloxideRequest(err)
+    }
+}
+
+impl From<InMemStorageError> for TgError {
+    fn from(err: InMemStorageError) -> Self {
+        Self::TeloxideInMemStorageError(err)
     }
 }
 

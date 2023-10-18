@@ -1,4 +1,5 @@
 mod bot;
+mod consts;
 mod handlers;
 #[allow(dead_code)]
 mod keyboards;

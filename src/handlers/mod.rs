@@ -1,4 +1,5 @@
 pub(crate) mod callback_handlers;
+pub(crate) mod dialogue_handlers;
 
 use crate::tg_error;
 use teloxide::{

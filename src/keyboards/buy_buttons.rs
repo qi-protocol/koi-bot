@@ -1,3 +1,7 @@
+use crate::consts::{
+    BUY_AMOUNT, BUY_TOKEN, CLOSE, ESTIMATED_RECEIVED_AMOUNT, MAIN_MENU, PRIVATE_TX, REBATE,
+    RECEIVE_TOKEN, SEND_BUY_TX, SEND_SELL_TX, WALLET_1, WALLET_2, WALLET_3,
+};
 use crate::keyboards::add_emoji;
 use teloxide::types::{InlineKeyboardButton, InlineKeyboardMarkup};
 
@@ -12,8 +16,8 @@ pub(crate) enum BuyButtons<'a> {
     Wallet1(&'a str),
     Wallet2(&'a str),
     Wallet3(&'a str),
-    Buy,
-    Receive,
+    BuyToken,
+    ReceiveToken,
     BuyAmount,
     EstimatedReceivedAmount,
 }
@@ -21,32 +25,30 @@ pub(crate) enum BuyButtons<'a> {
 impl<'a> BuyButtons<'a> {
     pub(crate) fn new(text: &'a str) -> Self {
         match text {
-            t if t == "Send Buy Tx" || t == add_emoji("Send Buy Tx").as_str() => Self::SendBuyTx,
-            t if t == "Send Sell Tx" || t == add_emoji("Send Sell Tx").as_str() => Self::SendSellTx,
-            t if t == "Main Menu" || t == add_emoji("Main Menu").as_str() => Self::MainMenu,
-            t if t == "Close" || t == add_emoji("Close").as_str() => Self::Close,
-            t if t == "Private Tx" || t == add_emoji("Private Tx").as_str() => {
-                Self::PrivateTx(text)
-            }
-            t if t == "Rebate" || t == add_emoji("Rebate").as_str() => Self::Rebate(text),
-            t if t == "Wallet 1" || t == add_emoji("Wallet 1").as_str() => Self::Wallet1(text),
-            t if t == "Wallet 2" || t == add_emoji("Wallet 2").as_str() => Self::Wallet2(text),
-            t if t == "Wallet 3" || t == add_emoji("Wallet 3").as_str() => Self::Wallet3(text),
-            "Buy" => Self::Buy,
-            "Receives" => Self::Receive,
-            "Buy Amount" => Self::BuyAmount,
-            "Estimated Received Amount" => Self::EstimatedReceivedAmount,
+            t if t == SEND_BUY_TX || t == add_emoji(SEND_BUY_TX).as_str() => Self::SendBuyTx,
+            t if t == SEND_SELL_TX || t == add_emoji(SEND_SELL_TX).as_str() => Self::SendSellTx,
+            t if t == MAIN_MENU || t == add_emoji(MAIN_MENU).as_str() => Self::MainMenu,
+            t if t == CLOSE || t == add_emoji(CLOSE).as_str() => Self::Close,
+            t if t == PRIVATE_TX || t == add_emoji(PRIVATE_TX).as_str() => Self::PrivateTx(text),
+            t if t == REBATE || t == add_emoji(REBATE).as_str() => Self::Rebate(text),
+            t if t == WALLET_1 || t == add_emoji(WALLET_1).as_str() => Self::Wallet1(text),
+            t if t == WALLET_2 || t == add_emoji(WALLET_2).as_str() => Self::Wallet2(text),
+            t if t == WALLET_3 || t == add_emoji(WALLET_3).as_str() => Self::Wallet3(text),
+            BUY_TOKEN => Self::BuyToken,
+            RECEIVE_TOKEN => Self::ReceiveToken,
+            BUY_AMOUNT => Self::BuyAmount,
+            ESTIMATED_RECEIVED_AMOUNT => Self::EstimatedReceivedAmount,
             _ => Self::SendSellTx,
         }
     }
 
     pub(crate) fn toggle(&self) -> String {
         match self {
-            Self::PrivateTx(text) => self.toggle_text(text, "Private Tx"),
-            Self::Rebate(text) => self.toggle_text(text, "Rebate"),
-            Self::Wallet1(text) => self.toggle_text(text, "Wallet 1"),
-            Self::Wallet2(text) => self.toggle_text(text, "Wallet 2"),
-            Self::Wallet3(text) => self.toggle_text(text, "Wallet 3"),
+            Self::PrivateTx(text) => self.toggle_text(text, PRIVATE_TX),
+            Self::Rebate(text) => self.toggle_text(text, REBATE),
+            Self::Wallet1(text) => self.toggle_text(text, WALLET_1),
+            Self::Wallet2(text) => self.toggle_text(text, WALLET_2),
+            Self::Wallet3(text) => self.toggle_text(text, WALLET_3),
             _ => format!("{:?}", self),
         }
     }
@@ -78,23 +80,19 @@ fn create_buy_keyboard(
     // 1st row
     keyboard = keyboard.append_row(vec![
         // no need to add emoji in the callback value
-        InlineKeyboardButton::callback(add_emoji("Main Menu"), "Main Menu".to_owned()),
-        InlineKeyboardButton::callback(add_emoji("Close"), "Close".to_owned()),
+        InlineKeyboardButton::callback(add_emoji(MAIN_MENU), MAIN_MENU.to_owned()),
+        InlineKeyboardButton::callback(add_emoji(CLOSE), CLOSE.to_owned()),
     ]);
 
     // 2nd row
     keyboard = keyboard.append_row(vec![
         match private_tx {
-            true => {
-                InlineKeyboardButton::callback(add_emoji("Private Tx"), add_emoji("Private Tx"))
-            }
-            false => {
-                InlineKeyboardButton::callback("Private Tx".to_owned(), "Private Tx".to_owned())
-            }
+            true => InlineKeyboardButton::callback(add_emoji(PRIVATE_TX), add_emoji(PRIVATE_TX)),
+            false => InlineKeyboardButton::callback(PRIVATE_TX.to_owned(), PRIVATE_TX.to_owned()),
         },
         match rebate {
-            true => InlineKeyboardButton::callback(add_emoji("Rebate"), add_emoji("Rebate")),
-            false => InlineKeyboardButton::callback("Rebate".to_owned(), "Rebate".to_owned()),
+            true => InlineKeyboardButton::callback(add_emoji(REBATE), add_emoji(REBATE)),
+            false => InlineKeyboardButton::callback(REBATE.to_owned(), REBATE.to_owned()),
         },
     ]);
 
@@ -108,42 +106,42 @@ fn create_buy_keyboard(
     // Default selection to wallet 1
     keyboard = keyboard.append_row(vec![
         match wallet1 {
-            true => InlineKeyboardButton::callback(add_emoji("Wallet 1"), add_emoji("Wallet 1")),
-            false => InlineKeyboardButton::callback("Wallet 1".to_owned(), "Wallet 1".to_owned()),
+            true => InlineKeyboardButton::callback(add_emoji(WALLET_1), add_emoji(WALLET_1)),
+            false => InlineKeyboardButton::callback(WALLET_1.to_owned(), WALLET_1.to_owned()),
         },
         match wallet2 {
-            true => InlineKeyboardButton::callback(add_emoji("Wallet 2"), add_emoji("Wallet 2")),
-            false => InlineKeyboardButton::callback("Wallet 2".to_owned(), "Wallet 2".to_owned()),
+            true => InlineKeyboardButton::callback(add_emoji(WALLET_2), add_emoji(WALLET_2)),
+            false => InlineKeyboardButton::callback(WALLET_2.to_owned(), WALLET_2.to_owned()),
         },
         match wallet3 {
-            true => InlineKeyboardButton::callback(add_emoji("Wallet 3"), add_emoji("Wallet 3")),
-            false => InlineKeyboardButton::callback("Wallet 3".to_owned(), "Wallet 3".to_owned()),
+            true => InlineKeyboardButton::callback(add_emoji(WALLET_3), add_emoji(WALLET_3)),
+            false => InlineKeyboardButton::callback(WALLET_3.to_owned(), WALLET_3.to_owned()),
         },
     ]);
 
     // 5th row
     keyboard = keyboard.append_row(vec![
-        InlineKeyboardButton::callback("Buy".to_owned(), "Buy".to_owned()),
-        InlineKeyboardButton::callback("Receives".to_owned(), "Receives".to_owned()),
+        InlineKeyboardButton::callback(BUY_TOKEN.to_owned(), BUY_TOKEN.to_owned()),
+        InlineKeyboardButton::callback(RECEIVE_TOKEN.to_owned(), RECEIVE_TOKEN.to_owned()),
     ]);
 
     // 6th row
     keyboard = keyboard.append_row(vec![InlineKeyboardButton::callback(
-        "Buy Amount".to_owned(),
-        "Buy Amount".to_owned(),
+        BUY_AMOUNT.to_owned(),
+        BUY_AMOUNT.to_owned(),
     )]);
 
     // 7th row
     keyboard = keyboard.append_row(vec![InlineKeyboardButton::callback(
-        "Estimated Received Amount".to_owned(),
-        "Estimated Received Amount".to_owned(),
+        ESTIMATED_RECEIVED_AMOUNT.to_owned(),
+        ESTIMATED_RECEIVED_AMOUNT.to_owned(),
     )]);
 
     // 8th row
     // Last one will always be Send Buy Tx
     keyboard = keyboard.append_row(vec![InlineKeyboardButton::callback(
-        "Send Buy Tx".to_owned(),
-        "Send Buy Tx".to_owned(),
+        SEND_BUY_TX.to_owned(),
+        SEND_BUY_TX.to_owned(),
     )]);
 
     Ok(keyboard)
