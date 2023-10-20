@@ -12,7 +12,7 @@ use teloxide::{
     Bot,
 };
 
-type AddressPromptDialogue =
+pub(crate) type AddressPromptDialogue =
     Dialogue<AddressPromptDialogueState, InMemStorage<AddressPromptDialogueState>>;
 
 #[allow(dead_code)]
@@ -29,13 +29,11 @@ pub(crate) async fn address_dialogue_handler(
     dialogue: AddressPromptDialogue,
     msg: Message,
 ) -> Result<(), tg_error::TgError> {
-    log::info!("Updating state caonimato ReceiveAddress");
     bot.send_message(
         msg.chat.id,
         "Enter the address of the token you want to trade",
     )
     .await?;
-    log::info!("Updating state to ReceiveAddress");
 
     dialogue
         .update(AddressPromptDialogueState::ReceiveAddress)
@@ -56,7 +54,6 @@ pub(crate) async fn receiving_address_or_token_handler(
             return Ok(());
         }
     };
-    log::info!("text: {}", text);
 
     // Checks if it's valid address
     if text.starts_with("0x") && Address::from_str(text).is_ok() {

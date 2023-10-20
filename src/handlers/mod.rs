@@ -13,9 +13,10 @@ pub(crate) async fn delete_previous_messages(
     bot: &Bot,
     chat_id: i64,
     last_message_id: i32,
+    number_of_deletes: i32,
 ) -> Result<(), tg_error::TgError> {
     log::info!("last message id: {}", last_message_id);
-    for message_id in (last_message_id - 10..=last_message_id).rev() {
+    for message_id in (last_message_id - number_of_deletes..=last_message_id).rev() {
         log::info!("last message id: {}", message_id);
         sleep(Duration::from_millis(10)).await;
         let _ = bot

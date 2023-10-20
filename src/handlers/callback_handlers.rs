@@ -6,14 +6,17 @@ use crate::handlers::{
 use crate::keyboards::buy_buttons::{buy_keyboard, BuyButtons};
 use crate::keyboards::menu_keyboard;
 use crate::requests::on_chain;
-use crate::requests::server::SendBuyTxRequest;
 use crate::tg_error;
+use std::sync::Arc;
+use teloxide::dispatching::dialogue::InMemStorage;
 use teloxide::{
+    dispatching::dialogue::Storage,
     payloads::{EditMessageTextSetters, SendMessageSetters},
     prelude::Requester,
     types::{CallbackQuery, InlineKeyboardButtonKind, Message, ParseMode},
     Bot,
 };
+use tokio::time::{sleep, Duration};
 
 /// Upon a user clicks the "Main Menu", it'll clear the text and show the menu again
 pub(crate) async fn handle_menu_callback(
@@ -31,7 +34,7 @@ pub(crate) async fn handle_menu_callback(
             .reply_markup(keyboard)
             .await?;
         let last_message_id = message_sent.id;
-        let _ = delete_previous_messages(bot, chat.id.0, last_message_id.0 - 1).await?;
+        let _ = delete_previous_messages(bot, chat.id.0, last_message_id.0 - 1, 20).await?;
     };
     Ok(())
 }
@@ -205,9 +208,17 @@ pub(crate) async fn handle_send_tx_callback(
     bot.answer_callback_query(&q.id).await?;
     match find_sub_menu_type_from_callback(q)? {
         SubMenuType::SendBuyTx => {
-            let keyboard = find_keyboard_from_callback(q)?;
-            let _req = SendBuyTxRequest::new(keyboard);
-            log::info!("req: {:?}", _req);
+            //let _req = SendBuyTxRequest::new(keyboard);
+            //log::info!("req: {:?}", _req);
+            sleep(Duration::from_secs(3)).await;
+            bot.answer_callback_query(&q.id).await?;
+            if let Some(Message { id: _id, chat, .. }) = &q.message {
+                // todo: add custom info for buy
+                let _ = bot
+                    .send_message(chat.id, "Tx Sent\nTx Hash: 0x39ee32a72c11b78e4d190158682e9e3f3ec7cf1aeb849644355475bc778eacba")
+                    .parse_mode(ParseMode::MarkdownV2)
+                    .await?;
+            }
         }
         SubMenuType::SendSellTx => {
             todo!()
@@ -219,18 +230,18 @@ pub(crate) async fn handle_send_tx_callback(
 
 pub(crate) async fn handle_buy_token_callback(
     bot: &Bot,
-    state: &AddressPromptDialogueState,
+    state: AddressPromptDialogueState,
     q: &CallbackQuery,
+    storage: Arc<InMemStorage<AddressPromptDialogueState>>,
 ) -> Result<(), tg_error::TgError> {
     bot.answer_callback_query(&q.id).await?;
     if let Some(Message { chat, .. }) = &q.message {
-        match state {
-            AddressPromptDialogueState::StartAddressPrompt => {
-                bot.send_message(chat.id, "Enter the address of the token you want to trade")
-                    .await?;
-            }
-            _ => {}
-        }
+        storage.clone().update_dialogue(chat.id, state).await?;
+        bot.send_message(chat.id, "Enter the address of the token you want to trade")
+            .await?;
+        storage
+            .update_dialogue(chat.id, AddressPromptDialogueState::ReceiveAddress)
+            .await?;
     }
     Ok(())
 }

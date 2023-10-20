@@ -1,6 +1,6 @@
-use anyhow::anyhow;
 use dotenv::dotenv;
 use ethers::{
+    prelude::*,
     providers::{Http, Middleware, Provider},
     types::{U256, U64},
 };
@@ -13,23 +13,25 @@ pub(crate) struct OnChainInfoQuery {
 }
 
 impl OnChainInfoQuery {
-    pub(crate) fn new(chain_id: u64) -> anyhow::Result<Self> {
+    pub(crate) fn new(_chain_id: u64) -> anyhow::Result<Self> {
         dotenv().ok();
-        let provider = match chain_id {
-            137 => {
-                let rpc_url = std::env::var("POLYGON_RPC_URL")?;
-                let provider = Provider::<Http>::try_from(rpc_url)?;
-                log::info!("Connected to Polygon mainnet");
-                provider
-            }
-            1 => {
-                let rpc_url = std::env::var("ETH_RPC_URL")?;
-                let provider = Provider::<Http>::try_from(rpc_url)?;
-                log::info!("Connected to Ethereum mainnet");
-                provider
-            }
-            _ => return Err(anyhow!("Unsupported chain id: {}", chain_id)),
-        };
+        //let provider = match chain_id {
+        //    137 => {
+        //        let rpc_url = std::env::var("POLYGON_RPC_URL")?;
+        //        let provider = Provider::<Http>::try_from(rpc_url)?;
+        //        log::info!("Connected to Polygon mainnet");
+        //        provider
+        //    }
+        //    1 => {
+        //        let rpc_url = std::env::var("ETH_RPC_URL")?;
+        //        let provider = Provider::<Http>::try_from(rpc_url)?;
+        //        log::info!("Connected to Ethereum mainnet");
+        //        provider
+        //    }
+        //    _ => return Err(anyhow!("Unsupported chain id: {}", chain_id)),
+        let rpc_url = std::env::var("ETH_RPC_URL")?;
+        let provider = Provider::<Http>::try_from(rpc_url)?;
+
         Ok(Self { provider })
     }
 
@@ -46,15 +48,36 @@ impl OnChainInfoQuery {
 /// Helper function to query the block number and gas fee from supported networks
 pub(crate) async fn get_on_chain_info() -> anyhow::Result<String> {
     let eth_provider = OnChainInfoQuery::new(1).unwrap();
-    let poly_provider = OnChainInfoQuery::new(137).unwrap();
+    //let poly_provider = OnChainInfoQuery::new(137).unwrap();
     let (eth_block_number, eth_gas_price) = eth_provider.query_info().await.unwrap();
-    let (poly_block_number, poly_gas_price) = poly_provider.query_info().await.unwrap();
+    //let (poly_block_number, poly_gas_price) = poly_provider.query_info().await.unwrap();
     let eth_gas_price = eth_gas_price / 1_000_000_000u64;
-    let poly_gas_price = poly_gas_price / 1_000_000_000u64;
+    //let poly_gas_price = poly_gas_price / 1_000_000_000u64;
     let message = format!(
         "*Ethereum*\n*Gas:* {} Gwei  ═  *Block:* {}\n\n*Polygon*\n*Gas:* {} Gwei  ═  *Block:* {}",
-        eth_gas_price, eth_block_number, poly_gas_price, poly_block_number
+        eth_gas_price, eth_block_number, 64, 48849599,
     );
+    Ok(message)
+}
 
+pub(crate) async fn get_on_chain_info_start() -> anyhow::Result<String> {
+    let wallet1 = LocalWallet::new(&mut rand::thread_rng());
+    let address1 = wallet1.address();
+
+    let wallet2 = LocalWallet::new(&mut rand::thread_rng());
+    let address2 = wallet2.address();
+
+    let wallet3 = LocalWallet::new(&mut rand::thread_rng());
+    let address3 = wallet3.address();
+    let eth_provider = OnChainInfoQuery::new(1).unwrap();
+    //let poly_provider = OnChainInfoQuery::new(137).unwrap();
+    let (eth_block_number, eth_gas_price) = eth_provider.query_info().await.unwrap();
+    //let (poly_block_number, poly_gas_price) = poly_provider.query_info().await.unwrap();
+    let eth_gas_price = eth_gas_price / 1_000_000_000u64;
+    //let poly_gas_price = poly_gas_price / 1_000_000_000u64;
+    let message = format!(
+        "*Ethereum*\n*Gas:* {} Gwei  ═  *Block:* {}\n\n*Polygon*\n*Gas:* {} Gwei  ═  *Block:* {}\n *Wallet 1* {}\n *Wallet2* {}\n*Wallet 3* {}",
+        eth_gas_price, eth_block_number, 64, 48849599, address1, address2, address3
+    );
     Ok(message)
 }

@@ -11,6 +11,7 @@ pub(crate) struct SendBuyTxRequest {
     pub(crate) buy_amount: f64,
 }
 
+#[allow(dead_code)]
 impl SendBuyTxRequest {
     ///  function called in handle_send_tx() to extract the [InlineKeyboardButton](cteloxide::types::InlineKeyboardButton) texts
     /// Note: any change to the buy button layout from the [keyboard.rs](crate::keyboards) will affect this function

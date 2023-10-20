@@ -27,7 +27,6 @@ async fn main() -> Result<(), tg_error::TgError> {
         .init();
 
     log::info!("Starting buttons bot...");
-    log::info!("Starting buttons bot...");
 
     let bot = bot::TgBot::new();
     let _ = bot.init().await;

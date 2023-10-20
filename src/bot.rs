@@ -15,18 +15,16 @@ use crate::tg_error;
 use std::sync::Arc;
 use teloxide::dispatching::HandlerExt;
 use teloxide::{
-    dispatching::{
-        dialogue::{InMemStorage, Storage},
-        UpdateFilterExt,
-    },
+    dispatching::{dialogue::InMemStorage, UpdateFilterExt},
     dptree,
     error_handlers::LoggingErrorHandler,
     payloads::SendMessageSetters,
     prelude::{Dispatcher, Requester},
-    types::{CallbackQuery, Me, Message, ParseMode, Update},
+    types::{CallbackQuery, Message, ParseMode, Update},
     utils::command::BotCommands,
     Bot,
 };
+use tokio::time::{sleep, Duration};
 
 #[derive(BotCommands, Clone)]
 #[command(rename_rule = "lowercase", description = "Supported commands:")]
@@ -56,15 +54,15 @@ impl TgBot {
 
     pub(crate) async fn init(self) -> Result<(), tg_error::TgError> {
         let handler = dptree::entry()
-            .branch(Update::filter_message().endpoint(message_callback))
+            .branch(Update::filter_message().filter_command::<Command>().endpoint(command_callback))
             .branch(Update::filter_callback_query().endpoint(button_callback))
             .branch(
-                Update::filter_message()
-                    .enter_dialogue::<Message,InMemStorage<AddressPromptDialogueState>,AddressPromptDialogueState>()
-                        .branch(dptree::case![AddressPromptDialogueState::StartAddressPrompt]
-                            .endpoint(address_dialogue_handler))
-                        .branch(dptree::case![AddressPromptDialogueState::ReceiveAddress]
-                            .endpoint(receiving_address_or_token_handler))
+                 Update::filter_message()
+                     .enter_dialogue::<Message,InMemStorage<AddressPromptDialogueState>,AddressPromptDialogueState>()
+                         .branch(dptree::case![AddressPromptDialogueState::StartAddressPrompt]
+                             .endpoint(address_dialogue_handler))
+                         .branch(dptree::case![AddressPromptDialogueState::ReceiveAddress]
+                             .endpoint(receiving_address_or_token_handler))
             );
 
         Dispatcher::builder(self.bot, handler)
@@ -82,55 +80,56 @@ impl TgBot {
     }
 }
 
-async fn message_callback(
-    bot: Bot,
-    msg: Message,
-    me: Me,
-    storage: Arc<InMemStorage<AddressPromptDialogueState>>,
-) -> Result<(), tg_error::TgError> {
-    let is_in_dialogue = storage.get_dialogue(msg.chat.id).await?.is_some();
-    if !is_in_dialogue {
-        if let Some(text) = msg.text() {
-            match BotCommands::parse(text, me.username()) {
-                Ok(Command::Help) => {
-                    let _ = bot
-                        .send_message(msg.chat.id, Command::descriptions().to_string())
-                        .await?;
-                }
-                Ok(Command::Menu) => {
-                    let keyboard = menu_keyboard();
-                    let menu_msg = on_chain::get_on_chain_info().await?;
+async fn command_callback(bot: Bot, cmd: Command, msg: Message) -> Result<(), tg_error::TgError> {
+    match cmd {
+        Command::Help => {
+            let _ = bot
+                .send_message(msg.chat.id, Command::descriptions().to_string())
+                .await?;
+        }
+        Command::Menu => {
+            let keyboard = menu_keyboard();
+            let menu_msg = on_chain::get_on_chain_info().await?;
 
-                    // send the new message
-                    let message_sent = bot
-                        .send_message(msg.chat.id, menu_msg)
-                        .parse_mode(ParseMode::MarkdownV2)
-                        .reply_markup(keyboard)
-                        .await?;
+            // send the new message
+            let message_sent = bot
+                .send_message(msg.chat.id, menu_msg)
+                .parse_mode(ParseMode::MarkdownV2)
+                .reply_markup(keyboard)
+                .await?;
 
-                    // delete previous messages
-                    let last_message_id = message_sent.id;
-                    let _ = delete_previous_messages(&bot, msg.chat.id.0, last_message_id.0 - 1)
-                        .await?;
-                }
-                Ok(Command::Start) => {
-                    // todp: add start message
-                    todo!()
-                }
-                Ok(Command::Wallets) => {
-                    todo!()
-                }
-                Ok(Command::History) => {
-                    todo!()
-                }
-                Err(_) => {}
-            }
+            // delete previous messages
+            let last_message_id = message_sent.id;
+            let _ =
+                delete_previous_messages(&bot, msg.chat.id.0, last_message_id.0 - 1, 20).await?;
+        }
+        Command::Start => {
+            sleep(Duration::from_secs(3)).await;
+            let keyboard = menu_keyboard();
+            let menu_msg = on_chain::get_on_chain_info_start().await?;
+
+            // send the new message
+            let _message_sent = bot
+                .send_message(msg.chat.id, menu_msg)
+                .parse_mode(ParseMode::MarkdownV2)
+                .reply_markup(keyboard)
+                .await?;
+        }
+        Command::Wallets => {
+            todo!()
+        }
+        Command::History => {
+            todo!()
         }
     }
     Ok(())
 }
 
-async fn button_callback(bot: Bot, q: CallbackQuery) -> Result<(), tg_error::TgError> {
+async fn button_callback(
+    bot: Bot,
+    q: CallbackQuery,
+    storage: Arc<InMemStorage<AddressPromptDialogueState>>,
+) -> Result<(), tg_error::TgError> {
     if let Some(action) = &q.data {
         match action.as_str() {
             // main-menu
@@ -150,8 +149,9 @@ async fn button_callback(bot: Bot, q: CallbackQuery) -> Result<(), tg_error::TgE
                     BuyButtons::BuyToken => {
                         handle_buy_token_callback(
                             &bot,
-                            &AddressPromptDialogueState::StartAddressPrompt,
+                            AddressPromptDialogueState::StartAddressPrompt,
                             &q,
+                            storage,
                         )
                         .await?
                     }
