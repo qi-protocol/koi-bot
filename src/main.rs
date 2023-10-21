@@ -1,10 +1,12 @@
 mod bot;
-#[allow(dead_code)]
 mod consts;
+#[allow(dead_code)]
 mod handlers;
 #[allow(dead_code)]
 mod keyboards;
 mod requests;
+#[allow(dead_code)]
+mod storages;
 mod tg_error;
 
 use env_logger::Builder;

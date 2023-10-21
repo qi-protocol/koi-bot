@@ -1,12 +1,14 @@
-use crate::consts::BUY_TOKEN;
-use crate::handlers::{find_keyboard_from_message, find_sub_menu_type_from_message, SubMenuType};
+use crate::consts::{BOT_NAME, BUY_TOKEN};
+use crate::handlers::delete_up_to_messages;
+use crate::handlers::find_keyboard_from_message;
 use crate::requests::on_chain;
+use crate::storages::{TgMessageStorage, GLOBAL_BUY_MENU_STORAGE};
 use crate::tg_error;
 use ethers::types::Address;
 use std::str::FromStr;
 use teloxide::{
     dispatching::dialogue::{Dialogue, InMemStorage},
-    payloads::SendMessageSetters,
+    payloads::EditMessageTextSetters,
     requests::Requester,
     types::{InlineKeyboardButtonKind, Message, ParseMode},
     Bot,
@@ -57,32 +59,35 @@ pub(crate) async fn receiving_address_or_token_handler(
 
     // Checks if it's valid address
     if text.starts_with("0x") && Address::from_str(text).is_ok() {
-        match find_sub_menu_type_from_message(&msg)? {
-            SubMenuType::SendBuyTx => {
-                let menu_msg = on_chain::get_on_chain_info().await?;
-                let keyboard = find_keyboard_from_message(&msg)?;
-                let mut new_keyboard = keyboard.clone();
+        let menu_msg = on_chain::get_on_chain_info().await?;
 
-                let new_button_text = format!("{}{}", BUY_TOKEN, text);
-                if let Some(button) = new_keyboard
-                    .inline_keyboard
-                    .get_mut(4)
-                    .and_then(|row| row.get_mut(0))
-                {
-                    button.text = new_button_text.to_string();
-                    button.kind =
-                        InlineKeyboardButtonKind::CallbackData(new_button_text.to_string());
-                };
-                // Edit the message with the new keyboard
-                bot.send_message(msg.chat.id, menu_msg)
-                    .parse_mode(ParseMode::MarkdownV2)
-                    .reply_markup(new_keyboard)
-                    .await?;
-                dialogue.exit().await?;
-            }
-            SubMenuType::SendSellTx => {
-                todo!()
-            }
+        if let Some(buy_menu) = GLOBAL_BUY_MENU_STORAGE.get(BOT_NAME.to_string()) {
+            let buy_msg = buy_menu.message;
+            let buy_msg_id = buy_menu.message_id;
+            let keyboard = find_keyboard_from_message(&buy_msg)?;
+            let mut new_keyboard = keyboard.clone();
+
+            let new_button_text = format!("{}", text);
+            if let Some(button) = new_keyboard
+                .inline_keyboard
+                .get_mut(4)
+                .and_then(|row| row.get_mut(0))
+            {
+                button.text = new_button_text.to_string();
+                button.kind = InlineKeyboardButtonKind::CallbackData(BUY_TOKEN.to_string());
+            };
+
+            // Edit the message with the new keyboard
+            bot.edit_message_text(msg.chat.id, buy_msg_id, menu_msg)
+                .parse_mode(ParseMode::MarkdownV2)
+                .reply_markup(new_keyboard)
+                .await?;
+            dialogue.exit().await?;
+            log::info!("last message id: {}", msg.id.0);
+            log::info!("last message id: {}", buy_msg_id.0);
+            let _ = delete_up_to_messages(&bot, msg.chat.id.0, msg.id.0, buy_msg_id.0).await?;
+        } else {
+            log::warn!("message not found");
         }
     } else {
         bot.send_message(msg.chat.id, "Please enter valid address")

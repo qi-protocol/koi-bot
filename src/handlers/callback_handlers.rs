@@ -6,6 +6,8 @@ use crate::handlers::{
 use crate::keyboards::buy_buttons::{buy_keyboard, BuyButtons};
 use crate::keyboards::menu_keyboard;
 use crate::requests::on_chain;
+use crate::storages::{TgMessage, TgMessageStorage};
+use crate::storages::{GLOBAL_BUY_MENU_STORAGE, GLOBAL_MAIN_MENU_STORAGE};
 use crate::tg_error;
 use std::sync::Arc;
 use teloxide::dispatching::dialogue::InMemStorage;
@@ -33,6 +35,23 @@ pub(crate) async fn handle_menu_callback(
             .parse_mode(ParseMode::MarkdownV2)
             .reply_markup(keyboard)
             .await?;
+        let message_sent = Arc::new(message_sent);
+
+        // Updates the GLOBAL_STORAGE
+        let _user_name = message_sent
+            .clone()
+            .from()
+            .and_then(|user| user.username.as_ref())
+            .and_then(|user_name| {
+                let message = TgMessage {
+                    chat_id: message_sent.chat.id,
+                    message_id: message_sent.id,
+                    message: message_sent.clone(),
+                };
+                GLOBAL_MAIN_MENU_STORAGE.insert(user_name.to_string(), message);
+                Some(user_name)
+            });
+
         let last_message_id = message_sent.id;
         let _ = delete_previous_messages(bot, chat.id.0, last_message_id.0 - 1, 20).await?;
     };
@@ -235,10 +254,32 @@ pub(crate) async fn handle_buy_token_callback(
     storage: Arc<InMemStorage<AddressPromptDialogueState>>,
 ) -> Result<(), tg_error::TgError> {
     bot.answer_callback_query(&q.id).await?;
+
+    // Updates the GLOBAL_BUY_MENU_STORAGE
+    if let Some(msg) = &q.message {
+        let msg = Arc::new(msg);
+        let _user_name = msg
+            .clone()
+            .from()
+            .and_then(|user| user.username.as_ref())
+            .and_then(|user_name| {
+                let message = TgMessage {
+                    chat_id: msg.chat.id,
+                    message_id: msg.id,
+                    message: (*msg).clone().into(),
+                };
+                GLOBAL_BUY_MENU_STORAGE.insert(user_name.to_string(), message);
+                Some(user_name)
+            });
+    }
+
     if let Some(Message { chat, .. }) = &q.message {
         storage.clone().update_dialogue(chat.id, state).await?;
-        bot.send_message(chat.id, "Enter the address of the token you want to trade")
-            .await?;
+        bot.send_message(
+            chat.id,
+            "Enter the address or name of the token you want to buy",
+        )
+        .await?;
         storage
             .update_dialogue(chat.id, AddressPromptDialogueState::ReceiveAddress)
             .await?;

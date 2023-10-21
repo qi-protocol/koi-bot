@@ -13,3 +13,4 @@ pub const BUY_AMOUNT: &str = "Buy Amount";
 pub const ESTIMATED_RECEIVED_AMOUNT: &str = "Estimated Received Amount";
 pub const BUY_TOKEN: &str = "Buy Token";
 pub const RECEIVE_TOKEN: &str = "Receive Token";
+pub const BOT_NAME: &str = "NishikigoiBot";

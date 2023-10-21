@@ -11,6 +11,7 @@ use crate::handlers::{delete_previous_messages, matching_sub_menu, SubMenuType};
 use crate::keyboards::buy_buttons::BuyButtons;
 use crate::keyboards::menu_keyboard;
 use crate::requests::on_chain;
+use crate::storages::{TgMessage, TgMessageStorage, GLOBAL_MAIN_MENU_STORAGE};
 use crate::tg_error;
 use std::sync::Arc;
 use teloxide::dispatching::HandlerExt;
@@ -97,6 +98,22 @@ async fn command_callback(bot: Bot, cmd: Command, msg: Message) -> Result<(), tg
                 .parse_mode(ParseMode::MarkdownV2)
                 .reply_markup(keyboard)
                 .await?;
+            let message_sent = Arc::new(message_sent);
+
+            // Updates the GLOBAL_MAIN_MENU_STORAGE
+            let _user_name = message_sent
+                .clone()
+                .from()
+                .and_then(|user| user.username.as_ref())
+                .and_then(|user_name| {
+                    let message = TgMessage {
+                        chat_id: message_sent.chat.id,
+                        message_id: message_sent.id,
+                        message: message_sent.clone(),
+                    };
+                    GLOBAL_MAIN_MENU_STORAGE.insert(user_name.to_string(), message);
+                    Some(user_name)
+                });
 
             // delete previous messages
             let last_message_id = message_sent.id;
