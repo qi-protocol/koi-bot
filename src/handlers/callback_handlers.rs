@@ -1,4 +1,4 @@
-use crate::handlers::dialogue_handlers::AddressPromptDialogueState;
+use crate::handlers::dialogue_handlers::PromptDialogueState;
 use crate::handlers::{
     delete_previous_messages, find_keyboard_from_callback, find_sub_menu_type_from_callback,
     SubMenuType,
@@ -249,9 +249,9 @@ pub(crate) async fn handle_send_tx_callback(
 
 pub(crate) async fn handle_buy_token_callback(
     bot: &Bot,
-    state: AddressPromptDialogueState,
+    state: PromptDialogueState,
     q: &CallbackQuery,
-    storage: Arc<InMemStorage<AddressPromptDialogueState>>,
+    storage: Arc<InMemStorage<PromptDialogueState>>,
 ) -> Result<(), tg_error::TgError> {
     bot.answer_callback_query(&q.id).await?;
 
@@ -281,7 +281,47 @@ pub(crate) async fn handle_buy_token_callback(
         )
         .await?;
         storage
-            .update_dialogue(chat.id, AddressPromptDialogueState::ReceiveAddress)
+            .update_dialogue(chat.id, PromptDialogueState::BuyAddressReceived)
+            .await?;
+    }
+    Ok(())
+}
+
+pub(crate) async fn handle_receive_token_callback(
+    bot: &Bot,
+    state: PromptDialogueState,
+    q: &CallbackQuery,
+    storage: Arc<InMemStorage<PromptDialogueState>>,
+) -> Result<(), tg_error::TgError> {
+    bot.answer_callback_query(&q.id).await?;
+
+    // Updates the GLOBAL_BUY_MENU_STORAGE
+    if let Some(msg) = &q.message {
+        let msg = Arc::new(msg);
+        let _user_name = msg
+            .clone()
+            .from()
+            .and_then(|user| user.username.as_ref())
+            .and_then(|user_name| {
+                let message = TgMessage {
+                    chat_id: msg.chat.id,
+                    message_id: msg.id,
+                    message: (*msg).clone().into(),
+                };
+                GLOBAL_BUY_MENU_STORAGE.insert(user_name.to_string(), message);
+                Some(user_name)
+            });
+    }
+
+    if let Some(Message { chat, .. }) = &q.message {
+        storage.clone().update_dialogue(chat.id, state).await?;
+        bot.send_message(
+            chat.id,
+            "Enter the address or name of the token you want to sell",
+        )
+        .await?;
+        storage
+            .update_dialogue(chat.id, PromptDialogueState::ReceiveAddressReceived)
             .await?;
     }
     Ok(())

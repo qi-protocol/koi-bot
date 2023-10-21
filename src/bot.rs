@@ -1,11 +1,11 @@
 use crate::consts::{BUY, CLOSE, MAIN_MENU};
 use crate::handlers::callback_handlers::{
     handle_buy_callback, handle_buy_token_callback, handle_close_callback, handle_menu_callback,
-    handle_private_tx_callback, handle_rebate_callback, handle_send_tx_callback,
-    handle_wallet_callback,
+    handle_private_tx_callback, handle_rebate_callback, handle_receive_token_callback,
+    handle_send_tx_callback, handle_wallet_callback,
 };
 use crate::handlers::dialogue_handlers::{
-    address_dialogue_handler, receiving_address_or_token_handler, AddressPromptDialogueState,
+    buy_address_dialogue_handler, buy_address_or_token_handler, PromptDialogueState,
 };
 use crate::handlers::{delete_previous_messages, matching_sub_menu, SubMenuType};
 use crate::keyboards::buy_buttons::BuyButtons;
@@ -59,20 +59,22 @@ impl TgBot {
             .branch(Update::filter_callback_query().endpoint(button_callback))
             .branch(
                  Update::filter_message()
-                     .enter_dialogue::<Message,InMemStorage<AddressPromptDialogueState>,AddressPromptDialogueState>()
-                         .branch(dptree::case![AddressPromptDialogueState::StartAddressPrompt]
-                             .endpoint(address_dialogue_handler))
-                         .branch(dptree::case![AddressPromptDialogueState::ReceiveAddress]
-                             .endpoint(receiving_address_or_token_handler))
+                     .enter_dialogue::<Message,InMemStorage<PromptDialogueState>,PromptDialogueState>()
+                         .branch(dptree::case![PromptDialogueState::BuyStartAddressPrompt]
+                             .endpoint(buy_address_dialogue_handler))
+                         .branch(dptree::case![PromptDialogueState::BuyAddressReceived]
+                             .endpoint(buy_address_or_token_handler))
+                         .branch(dptree::case![PromptDialogueState::ReceiveStartAddressPrompt]
+                             .endpoint(buy_address_dialogue_handler))
+                         .branch(dptree::case![PromptDialogueState::ReceiveAddressReceived]
+                             .endpoint(buy_address_or_token_handler))
             );
 
         Dispatcher::builder(self.bot, handler)
             .error_handler(LoggingErrorHandler::with_custom_text(
                 "An error has occurred in the dispatcher",
             ))
-            .dependencies(dptree::deps![
-                InMemStorage::<AddressPromptDialogueState>::new()
-            ])
+            .dependencies(dptree::deps![InMemStorage::<PromptDialogueState>::new()])
             .enable_ctrlc_handler()
             .build()
             .dispatch()
@@ -145,7 +147,7 @@ async fn command_callback(bot: Bot, cmd: Command, msg: Message) -> Result<(), tg
 async fn button_callback(
     bot: Bot,
     q: CallbackQuery,
-    storage: Arc<InMemStorage<AddressPromptDialogueState>>,
+    storage: Arc<InMemStorage<PromptDialogueState>>,
 ) -> Result<(), tg_error::TgError> {
     if let Some(action) = &q.data {
         match action.as_str() {
@@ -166,7 +168,16 @@ async fn button_callback(
                     BuyButtons::BuyToken => {
                         handle_buy_token_callback(
                             &bot,
-                            AddressPromptDialogueState::StartAddressPrompt,
+                            PromptDialogueState::BuyStartAddressPrompt,
+                            &q,
+                            storage,
+                        )
+                        .await?
+                    }
+                    BuyButtons::ReceiveToken => {
+                        handle_receive_token_callback(
+                            &bot,
+                            PromptDialogueState::ReceiveStartAddressPrompt,
                             &q,
                             storage,
                         )

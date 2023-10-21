@@ -5,15 +5,18 @@ use std::sync::Arc;
 use teloxide::types::{ChatId, Message, MessageId};
 
 lazy_static! {
+    /// Used to locate the main menu location
     pub(crate) static ref GLOBAL_MAIN_MENU_STORAGE: MainMenuStorage = MainMenuStorage::new();
 }
 
 lazy_static! {
+    /// Used to locate the buy menu location
     pub(crate) static ref GLOBAL_BUY_MENU_STORAGE: BuyMenuStorage = TgMessageStorage::new();
 }
 
 lazy_static! {
-    pub(crate) static ref GLOBAL_SELL_STORAGE: SellMenuStorage = TgMessageStorage::new();
+    /// Used to locate the sell menu location
+    pub(crate) static ref GLOBAL_SELL_MENU_STORAGE: SellMenuStorage = TgMessageStorage::new();
 }
 
 pub(crate) trait TgMessageStorage {
