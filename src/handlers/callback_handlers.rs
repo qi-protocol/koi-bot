@@ -326,3 +326,40 @@ pub(crate) async fn handle_receive_token_callback(
     }
     Ok(())
 }
+
+pub(crate) async fn handle_buy_amount_callback(
+    bot: &Bot,
+    state: PromptDialogueState,
+    q: &CallbackQuery,
+    storage: Arc<InMemStorage<PromptDialogueState>>,
+) -> Result<(), tg_error::TgError> {
+    bot.answer_callback_query(&q.id).await?;
+
+    // Updates the GLOBAL_BUY_MENU_STORAGE
+    if let Some(msg) = &q.message {
+        let msg = Arc::new(msg);
+        let _user_name = msg
+            .clone()
+            .from()
+            .and_then(|user| user.username.as_ref())
+            .and_then(|user_name| {
+                let message = TgMessage {
+                    chat_id: msg.chat.id,
+                    message_id: msg.id,
+                    message: (*msg).clone().into(),
+                };
+                GLOBAL_BUY_MENU_STORAGE.insert(user_name.to_string(), message);
+                Some(user_name)
+            });
+    }
+
+    if let Some(Message { chat, .. }) = &q.message {
+        storage.clone().update_dialogue(chat.id, state).await?;
+        bot.send_message(chat.id, "Enter the amount you want to trade")
+            .await?;
+        storage
+            .update_dialogue(chat.id, PromptDialogueState::BuyAmountReceived)
+            .await?;
+    }
+    Ok(())
+}

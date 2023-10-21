@@ -1,11 +1,13 @@
 use crate::consts::{BUY, CLOSE, MAIN_MENU};
 use crate::handlers::callback_handlers::{
-    handle_buy_callback, handle_buy_token_callback, handle_close_callback, handle_menu_callback,
-    handle_private_tx_callback, handle_rebate_callback, handle_receive_token_callback,
-    handle_send_tx_callback, handle_wallet_callback,
+    handle_buy_amount_callback, handle_buy_callback, handle_buy_token_callback,
+    handle_close_callback, handle_menu_callback, handle_private_tx_callback,
+    handle_rebate_callback, handle_receive_token_callback, handle_send_tx_callback,
+    handle_wallet_callback,
 };
 use crate::handlers::dialogue_handlers::{
-    buy_address_dialogue_handler, buy_address_or_token_handler, PromptDialogueState,
+    buy_address_dialogue_handler, buy_address_or_token_handler, buy_amount_dialogue_handler,
+    PromptDialogueState,
 };
 use crate::handlers::{delete_previous_messages, matching_sub_menu, SubMenuType};
 use crate::keyboards::buy_buttons::BuyButtons;
@@ -68,6 +70,8 @@ impl TgBot {
                              .endpoint(buy_address_dialogue_handler))
                          .branch(dptree::case![PromptDialogueState::ReceiveAddressReceived]
                              .endpoint(buy_address_or_token_handler))
+                         .branch(dptree::case![PromptDialogueState::BuyAmountReceived]
+                             .endpoint(buy_amount_dialogue_handler))
             );
 
         Dispatcher::builder(self.bot, handler)
@@ -178,6 +182,15 @@ async fn button_callback(
                         handle_receive_token_callback(
                             &bot,
                             PromptDialogueState::ReceiveStartAddressPrompt,
+                            &q,
+                            storage,
+                        )
+                        .await?
+                    }
+                    BuyButtons::BuyAmount => {
+                        handle_buy_amount_callback(
+                            &bot,
+                            PromptDialogueState::StartBuyAmountPrompt,
                             &q,
                             storage,
                         )
