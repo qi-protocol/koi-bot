@@ -1,20 +1,27 @@
-[package]
-name = "koi-bot"
+[workspace]
+members = [
+  "koi-bot",
+  "tg-api",
+  "server"
+]
+resolver = "2"
+
+[workspace.package]
 version = "0.1.0"
 edition = "2021"
+license = "MIT OR Apache-2.0"
+authors = ["qi-protocol"]
+rust-version = "1.71.1"
+repository = "https://github.com/qi-protocol/koi-bot"
 
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
-
-[dependencies]
-teloxide = { version = "0.12", features = ["macros"] }
+[workspace.dependencies]
+tg-api = { path = "tg-api" }
 log = "0.4"
-pretty_env_logger = "0.4"
 tokio = { version =  "1.8", features = ["rt-multi-thread", "macros"] }
 anyhow = "1.0.75"
+env_logger = "0.10.0"
 ethers = "2.0.10"
 dotenv = "0.15.0"
 hashbrown = "0.14.1"
 parking_lot = "0.12.1"
-lazy_static = "1.4.0"
-env_logger = "0.10.0"
 tonic = "0.10.2"

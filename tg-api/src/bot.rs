@@ -14,7 +14,6 @@ use crate::keyboards::buy_buttons::BuyButtons;
 use crate::keyboards::menu_keyboard;
 use crate::requests::on_chain;
 use crate::storages::{TgMessage, TgMessageStorage, GLOBAL_MAIN_MENU_STORAGE};
-use crate::tg_error;
 use std::sync::Arc;
 use teloxide::dispatching::HandlerExt;
 use teloxide::{
@@ -28,6 +27,22 @@ use teloxide::{
     Bot,
 };
 use tokio::time::{sleep, Duration};
+
+use std::fmt;
+use teloxide::dispatching::dialogue::InMemStorageError;
+
+#[derive(Debug)]
+#[allow(dead_code)]
+pub enum TgError {
+    AnyhowError(anyhow::Error),
+    Parse(String),
+    TeloxideRequest(teloxide::RequestError),
+    TeloxideInMemStorageError(InMemStorageError),
+    UnmatchedQuery(teloxide::types::CallbackQuery),
+    NoQueryData(teloxide::types::CallbackQuery),
+    NoQueryMessage(teloxide::types::CallbackQuery),
+    UserNotFound(teloxide::types::Message),
+}
 
 #[derive(BotCommands, Clone)]
 #[command(rename_rule = "lowercase", description = "Supported commands:")]
@@ -45,17 +60,17 @@ enum Command {
 }
 
 #[derive(Clone, Debug)]
-pub(crate) struct TgBot {
+pub struct TgBot {
     bot: Bot,
 }
 
 impl TgBot {
-    pub(crate) fn new() -> Self {
+    pub fn new() -> Self {
         let bot = Bot::from_env();
         Self { bot }
     }
 
-    pub(crate) async fn init(self) -> Result<(), tg_error::TgError> {
+    pub async fn init(self) -> Result<(), TgError> {
         let handler = dptree::entry()
             .branch(Update::filter_message().filter_command::<Command>().endpoint(command_callback))
             .branch(Update::filter_callback_query().endpoint(button_callback))
@@ -87,7 +102,7 @@ impl TgBot {
     }
 }
 
-async fn command_callback(bot: Bot, cmd: Command, msg: Message) -> Result<(), tg_error::TgError> {
+async fn command_callback(bot: Bot, cmd: Command, msg: Message) -> Result<(), TgError> {
     match cmd {
         Command::Help => {
             let _ = bot
@@ -152,7 +167,7 @@ async fn button_callback(
     bot: Bot,
     q: CallbackQuery,
     storage: Arc<InMemStorage<PromptDialogueState>>,
-) -> Result<(), tg_error::TgError> {
+) -> Result<(), TgError> {
     if let Some(action) = &q.data {
         match action.as_str() {
             // main-menu
@@ -204,9 +219,52 @@ async fn button_callback(
                 _ => {}
             },
         }
-
         log::info!("You chose: {}", action);
     }
-
     Ok(())
+}
+
+impl fmt::Display for TgError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match *self {
+            Self::Parse(ref err) => write!(f, "Parse error: {}", err),
+            Self::TeloxideRequest(ref err) => {
+                write!(f, "Telegram request error: {}", err)
+            }
+            Self::TeloxideInMemStorageError(ref err) => {
+                write!(f, "InMemStorage error: {}", err)
+            }
+            Self::UnmatchedQuery(ref cb_query) => {
+                write!(f, "Could not match callback query: {:?}", cb_query)
+            }
+            Self::NoQueryData(ref cb_query) => {
+                write!(f, "Could not get query data: {:?}", cb_query)
+            }
+            Self::NoQueryMessage(ref cb_query) => {
+                write!(f, "Could not get query message: {:?}", cb_query)
+            }
+            Self::UserNotFound(ref msg) => {
+                write!(f, "Could not find user for message: {:?}", msg)
+            }
+            Self::AnyhowError(ref err) => write!(f, "Anyhow error: {}", err),
+        }
+    }
+}
+
+impl From<teloxide::RequestError> for TgError {
+    fn from(err: teloxide::RequestError) -> Self {
+        Self::TeloxideRequest(err)
+    }
+}
+
+impl From<InMemStorageError> for TgError {
+    fn from(err: InMemStorageError) -> Self {
+        Self::TeloxideInMemStorageError(err)
+    }
+}
+
+impl From<anyhow::Error> for TgError {
+    fn from(err: anyhow::Error) -> Self {
+        Self::AnyhowError(err)
+    }
 }

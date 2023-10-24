@@ -1,9 +1,9 @@
+use crate::bot::TgError;
 use crate::consts::{BOT_NAME, BUY_TOKEN, RECEIVE_TOKEN};
 use crate::handlers::delete_up_to_messages;
 use crate::handlers::find_keyboard_from_message;
 use crate::requests::on_chain;
 use crate::storages::{TgMessageStorage, GLOBAL_BUY_MENU_STORAGE};
-use crate::tg_error;
 use ethers::types::Address;
 use std::str::FromStr;
 use teloxide::{
@@ -44,7 +44,7 @@ pub(crate) async fn buy_address_dialogue_handler(
     bot: Bot,
     dialogue: BuyAddressPromptDialogue,
     msg: Message,
-) -> Result<(), tg_error::TgError> {
+) -> Result<(), TgError> {
     bot.send_message(
         msg.chat.id,
         "Enter the address of the token you want to trade",
@@ -62,7 +62,7 @@ pub(crate) async fn buy_address_or_token_handler(
     bot: Bot,
     dialogue: BuyAddressPromptDialogue,
     msg: Message,
-) -> Result<(), tg_error::TgError> {
+) -> Result<(), TgError> {
     let text = match msg.text() {
         Some(t) => t,
         _ => {
@@ -134,7 +134,7 @@ pub(crate) async fn buy_amount_dialogue_handler(
     bot: Bot,
     dialogue: BuyAddressPromptDialogue,
     msg: Message,
-) -> Result<(), tg_error::TgError> {
+) -> Result<(), TgError> {
     let text = match msg.text() {
         Some(t) => t,
         _ => {

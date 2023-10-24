@@ -1,3 +1,4 @@
+use crate::bot::TgError;
 use crate::handlers::dialogue_handlers::PromptDialogueState;
 use crate::handlers::{
     delete_previous_messages, find_keyboard_from_callback, find_sub_menu_type_from_callback,
@@ -8,7 +9,6 @@ use crate::keyboards::menu_keyboard;
 use crate::requests::on_chain;
 use crate::storages::{TgMessage, TgMessageStorage};
 use crate::storages::{GLOBAL_BUY_MENU_STORAGE, GLOBAL_MAIN_MENU_STORAGE};
-use crate::tg_error;
 use std::sync::Arc;
 use teloxide::dispatching::dialogue::InMemStorage;
 use teloxide::{
@@ -21,10 +21,7 @@ use teloxide::{
 use tokio::time::{sleep, Duration};
 
 /// Upon a user clicks the "Main Menu", it'll clear the text and show the menu again
-pub(crate) async fn handle_menu_callback(
-    bot: &Bot,
-    q: &CallbackQuery,
-) -> Result<(), tg_error::TgError> {
+pub(crate) async fn handle_menu_callback(bot: &Bot, q: &CallbackQuery) -> Result<(), TgError> {
     let keyboard = menu_keyboard();
     bot.answer_callback_query(&q.id).await?;
     if let Some(Message { chat, .. }) = &q.message {
@@ -58,10 +55,7 @@ pub(crate) async fn handle_menu_callback(
     Ok(())
 }
 
-pub(crate) async fn handle_buy_callback(
-    bot: &Bot,
-    q: &CallbackQuery,
-) -> Result<(), tg_error::TgError> {
+pub(crate) async fn handle_buy_callback(bot: &Bot, q: &CallbackQuery) -> Result<(), TgError> {
     let keyboard = buy_keyboard(true, false, true, false, false)?;
     bot.answer_callback_query(&q.id).await?;
     if let Some(Message { id: _id, chat, .. }) = &q.message {
@@ -76,10 +70,7 @@ pub(crate) async fn handle_buy_callback(
     Ok(())
 }
 
-pub(crate) async fn handle_close_callback(
-    bot: &Bot,
-    q: &CallbackQuery,
-) -> Result<(), tg_error::TgError> {
+pub(crate) async fn handle_close_callback(bot: &Bot, q: &CallbackQuery) -> Result<(), TgError> {
     bot.answer_callback_query(&q.id).await?;
     if let Some(Message { id, chat, .. }) = &q.message {
         let _ = bot.delete_message(chat.id, *id).await?;
@@ -87,10 +78,7 @@ pub(crate) async fn handle_close_callback(
     Ok(())
 }
 
-pub(crate) async fn handle_wallet_callback(
-    bot: &Bot,
-    q: &CallbackQuery,
-) -> Result<(), tg_error::TgError> {
+pub(crate) async fn handle_wallet_callback(bot: &Bot, q: &CallbackQuery) -> Result<(), TgError> {
     bot.answer_callback_query(&q.id).await?;
 
     if let (Some(button), Some(Message { id, chat, .. })) = (&q.data, &q.message) {
@@ -137,7 +125,7 @@ pub(crate) async fn handle_wallet_callback(
 pub(crate) async fn handle_private_tx_callback(
     bot: &Bot,
     q: &CallbackQuery,
-) -> Result<(), tg_error::TgError> {
+) -> Result<(), TgError> {
     bot.answer_callback_query(&q.id).await?;
     match find_sub_menu_type_from_callback(q)? {
         SubMenuType::SendBuyTx => {
@@ -177,10 +165,7 @@ pub(crate) async fn handle_private_tx_callback(
     Ok(())
 }
 
-pub(crate) async fn handle_rebate_callback(
-    bot: &Bot,
-    q: &CallbackQuery,
-) -> Result<(), tg_error::TgError> {
+pub(crate) async fn handle_rebate_callback(bot: &Bot, q: &CallbackQuery) -> Result<(), TgError> {
     bot.answer_callback_query(&q.id).await?;
     match find_sub_menu_type_from_callback(q)? {
         SubMenuType::SendBuyTx => {
@@ -220,10 +205,7 @@ pub(crate) async fn handle_rebate_callback(
     Ok(())
 }
 
-pub(crate) async fn handle_send_tx_callback(
-    bot: &Bot,
-    q: &CallbackQuery,
-) -> Result<(), tg_error::TgError> {
+pub(crate) async fn handle_send_tx_callback(bot: &Bot, q: &CallbackQuery) -> Result<(), TgError> {
     bot.answer_callback_query(&q.id).await?;
     match find_sub_menu_type_from_callback(q)? {
         SubMenuType::SendBuyTx => {
@@ -252,7 +234,7 @@ pub(crate) async fn handle_buy_token_callback(
     state: PromptDialogueState,
     q: &CallbackQuery,
     storage: Arc<InMemStorage<PromptDialogueState>>,
-) -> Result<(), tg_error::TgError> {
+) -> Result<(), TgError> {
     bot.answer_callback_query(&q.id).await?;
 
     // Updates the GLOBAL_BUY_MENU_STORAGE
@@ -292,7 +274,7 @@ pub(crate) async fn handle_receive_token_callback(
     state: PromptDialogueState,
     q: &CallbackQuery,
     storage: Arc<InMemStorage<PromptDialogueState>>,
-) -> Result<(), tg_error::TgError> {
+) -> Result<(), TgError> {
     bot.answer_callback_query(&q.id).await?;
 
     // Updates the GLOBAL_BUY_MENU_STORAGE
@@ -332,7 +314,7 @@ pub(crate) async fn handle_buy_amount_callback(
     state: PromptDialogueState,
     q: &CallbackQuery,
     storage: Arc<InMemStorage<PromptDialogueState>>,
-) -> Result<(), tg_error::TgError> {
+) -> Result<(), TgError> {
     bot.answer_callback_query(&q.id).await?;
 
     // Updates the GLOBAL_BUY_MENU_STORAGE

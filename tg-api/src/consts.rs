@@ -8,6 +8,7 @@ pub const WALLET_1: &str = "Wallet 1";
 pub const WALLET_2: &str = "Wallet 2";
 pub const WALLET_3: &str = "Wallet 3";
 pub const BUY: &str = "Buy";
+#[allow(dead_code)]
 pub const RECEIVE: &str = "Receive";
 pub const BUY_AMOUNT: &str = "Buy Amount";
 pub const ESTIMATED_RECEIVED_AMOUNT: &str = "Estimated Received Amount";

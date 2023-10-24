@@ -1,7 +1,7 @@
 pub(crate) mod callback_handlers;
 pub(crate) mod dialogue_handlers;
 
-use crate::tg_error;
+use crate::bot::TgError;
 use teloxide::{
     prelude::Requester,
     types::{CallbackQuery, ChatId, InlineKeyboardMarkup, Message, MessageId},
@@ -68,7 +68,7 @@ pub(crate) async fn delete_previous_messages(
     chat_id: i64,
     last_message_id: i32,
     number_of_deletes: i32,
-) -> Result<(), tg_error::TgError> {
+) -> Result<(), TgError> {
     log::info!("last message id: {}", last_message_id);
     for message_id in (last_message_id - number_of_deletes..=last_message_id).rev() {
         sleep(Duration::from_millis(10)).await;
@@ -85,7 +85,7 @@ pub(crate) async fn delete_up_to_messages(
     chat_id: i64,
     start: i32,
     end: i32,
-) -> Result<(), tg_error::TgError> {
+) -> Result<(), TgError> {
     for message_id in (end + 1..=start).rev() {
         sleep(Duration::from_millis(10)).await;
         let _ = bot

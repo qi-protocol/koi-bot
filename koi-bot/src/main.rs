@@ -1,20 +1,10 @@
-mod bot;
-mod consts;
-#[allow(dead_code)]
-mod handlers;
-#[allow(dead_code)]
-mod keyboards;
-mod requests;
-#[allow(dead_code)]
-mod storages;
-mod tg_error;
-
 use env_logger::Builder;
 use log::LevelFilter;
 use std::io::Write;
+use tg_api::bot;
 
 #[tokio::main]
-async fn main() -> Result<(), tg_error::TgError> {
+pub async fn main() -> Result<(), bot::TgError> {
     Builder::new()
         .format(|buf, record| {
             writeln!(
