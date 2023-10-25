@@ -5,17 +5,10 @@ use tg_api::bot;
 
 #[tokio::main]
 pub async fn main() -> Result<(), bot::TgError> {
-    Builder::new()
-        .format(|buf, record| {
-            writeln!(
-                buf,
-                "[{}] [{}] - {}",
-                record.level(),
-                record.target(),
-                record.args()
-            )
-        })
-        .filter(None, LevelFilter::Info)
+    tracing_subscriber::fmt()
+        .without_time() // For dev enb
+        .with_target(false)
+        .with_env_filter(EnvFilter::from_default_env())
         .init();
 
     log::info!("Starting buttons bot...");

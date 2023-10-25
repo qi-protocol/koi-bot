@@ -5,6 +5,7 @@ members = [
   "server"
 ]
 resolver = "2"
+default-run = "koi-bot"
 
 [workspace.package]
 version = "0.1.0"
@@ -17,11 +18,14 @@ repository = "https://github.com/qi-protocol/koi-bot"
 [workspace.dependencies]
 tg-api = { path = "tg-api" }
 log = "0.4"
-tokio = { version =  "1.8", features = ["rt-multi-thread", "macros"] }
+tokio = { version =  "1.8", features = ["rt-multi-thread", "macros", "test-util"] }
 anyhow = "1.0.75"
 env_logger = "0.10.0"
 ethers = "2.0.10"
 dotenv = "0.15.0"
-hashbrown = "0.14.1"
+hashbrown = "0.14"
 parking_lot = "0.12.1"
 tonic = "0.10.2"
+# -- tracing
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }

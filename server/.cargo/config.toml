@@ -1,0 +1,12 @@
+
+[env]
+
+RUST_LOG="server=debug"
+
+## -- Secrets
+# Keys and passwords below are for localhost dev ONLY.
+# e.g., "welcome" type of passwords.
+# i.e., Encryption not needed.
+# here uses dev_only_pwd as password 
+
+SERVICE_DB_URL="postgres://app_user:dev_only_pwd@localhost/app_db"
