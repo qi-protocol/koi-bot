@@ -27,7 +27,6 @@ use teloxide::{
     Bot,
 };
 use tokio::time::{sleep, Duration};
-use tracing_subscriber::EnvFilter;
 
 use std::fmt;
 use teloxide::dispatching::dialogue::InMemStorageError;

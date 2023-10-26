@@ -7,7 +7,7 @@ edition = "2021"
 
 [dependencies]
 anyhow = {workspace = true}
-axum = "0.6.20"
+axum = "0.6"
 tokio = { workspace = true }
 tower-http = { version ="0.4.4", features = ["fs"] }
 # --tracing
@@ -18,10 +18,12 @@ tracing-subscriber = { workspace=true }
 sqlx = { version = "0.7", features = [ "runtime-tokio", "postgres", "uuid" ] }
 sqlb = "0.4"
 # -- json
-serde_with = { version = "3.4.0", features = ["json"] }
-serde = {version = "1", features = ["derive"]}
+serde_with = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
 # --test
 serial_test = "2.0.0"
+tower-cookies = "0.9.0"
 
 [dev-dependencies]
 httpc-test = "0.1.7"

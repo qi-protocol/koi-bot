@@ -7,11 +7,12 @@
 //! - `ModelController`('ProjectBMC') implements CRUD and other data access methods on a given entity (i.e, `Task`)
 //!     - `BMC` stands for `Backend Model Controller`
 //! - `ModelManager` is designed to be passed as an argument to all ModelControllers functions
-mod base;
 mod error;
+mod shared_trait;
 mod store;
 pub mod task;
-use self::error::{Error, Result};
+pub mod user;
+pub use self::error::{Error, Result};
 
 #[derive(Clone, Debug)]
 pub struct ModelManager {

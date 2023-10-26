@@ -1,7 +1,5 @@
-use env_logger::Builder;
-use log::LevelFilter;
-use std::io::Write;
 use tg_api::bot;
+use tracing_subscriber::EnvFilter;
 
 #[tokio::main]
 pub async fn main() -> Result<(), bot::TgError> {

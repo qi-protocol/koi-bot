@@ -1,48 +1,42 @@
 use crate::ctx::Ctx;
-use crate::model::base;
-use crate::model::base::DatabaseBackendController;
-use crate::model::Error;
-use crate::model::ModelManager;
-use crate::model::Result;
+use crate::model::{shared_trait, Error, ModelManager, Result};
 use serde::{Deserialize, Serialize};
+use sqlb::Fields;
 use sqlx::FromRow;
 
-#[derive(Debug, Serialize, Deserialize, FromRow)]
+#[derive(Debug, Fields, Serialize, Deserialize, FromRow)]
 pub struct Task {
     pub id: i64,
     pub title: String,
 }
 
-#[derive(Deserialize)]
+#[derive(Deserialize, Fields)]
 pub struct TaskCreate {
     pub title: String,
 }
 
-#[derive(Deserialize)]
+#[derive(Deserialize, Fields)]
 pub struct TaskUpdate {
     pub title: Option<String>,
 }
 
 pub struct TaskBackendManagerController {}
 
-impl DatabaseBackendController for TaskBackendManagerController {
+impl shared_trait::DatabaseController for TaskBackendManagerController {
     const TABLE: &'static str = "take";
 }
 
 impl TaskBackendManagerController {
-    pub async fn create(_ctx: &Ctx, mm: &ModelManager, task_c: TaskCreate) -> Result<i64> {
-        let db = mm.db();
-        let (id,) =
-            sqlx::query_as::<_, (i64,)>("INSERT INTO task (title) VALUES ($1) RETURNING id")
-                .bind(task_c.title)
-                .fetch_one(db)
-                .await?;
-
-        Ok(id)
+    pub async fn create(ctx: &Ctx, mm: &ModelManager, task_c: TaskCreate) -> Result<i64> {
+        shared_trait::create::<Self, _>(ctx, mm, task_c).await
     }
 
     pub async fn get(ctx: &Ctx, mm: &ModelManager, id: i64) -> Result<Task> {
-        base::get::<Self, _>(ctx, mm, id).await
+        shared_trait::get::<Self, _>(ctx, mm, id).await
+    }
+
+    pub async fn list(ctx: &Ctx, mm: &ModelManager) -> Result<Vec<Task>> {
+        shared_trait::list::<Self, _>(ctx, mm).await
     }
 }
 

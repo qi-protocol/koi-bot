@@ -1,4 +1,5 @@
 pub mod _dev_utils;
+mod api;
 mod config;
 mod ctx;
 mod error;
@@ -7,6 +8,8 @@ mod model;
 pub use config::config;
 pub use error::{Error, Result};
 
+use crate::api::rpc;
+use crate::model::ModelManager;
 use axum::{
     extract::{Path, Query},
     response::{Html, IntoResponse},
@@ -18,14 +21,20 @@ use std::net::SocketAddr;
 use tracing_subscriber::EnvFilter;
 
 #[tokio::main]
-async fn main() {
+async fn main() -> Result<()> {
     tracing_subscriber::fmt()
-        .without_time() // For dev enb
+        .without_time() // For dev env
         .with_target(false)
         .with_env_filter(EnvFilter::from_default_env())
         .init();
 
+    // dev only
     _dev_utils::init_dev().await;
+
+    let model_manager = ModelManager::new().await?;
+
+    let rpc_route =
+        rpc::routes::routes(model_manager.clone()).route_layer(middleware::from_fn(mw_ctx));
 
     let routes_all = Router::new().merge(routes_hello());
 
@@ -33,6 +42,8 @@ async fn main() {
     let _ = axum::Server::bind(&addr)
         .serve(routes_all.into_make_service())
         .await;
+
+    Ok(())
 }
 
 fn routes_hello() -> Router {
