@@ -6,7 +6,7 @@ use serde_json;
 
 pub type Result<T> = core::result::Result<T, Error>;
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, strum_macros::AsRefStr)]
 #[serde(tag = "type", content = "data")]
 pub enum Error {
     /// Login - Username not found
@@ -54,3 +54,37 @@ impl core::fmt::Display for Error {
         write!(fmt, "{self:?}")
     }
 }
+
+impl std::error::Error for Error {}
+
+impl Error {
+    #[allow(dead_code)]
+    pub fn client_status_and_error(&self) -> (StatusCode, ClientError) {
+        use crate::api::Error::*;
+
+        #[allow(unreachable_patterns)]
+        match self {
+            Model(model::Error::EntityNotFound { entity, id }) => (
+                StatusCode::BAD_REQUEST,
+                ClientError::ENTITY_NOT_FOUND { entity, id: *id },
+            ),
+
+            _ => (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                ClientError::SERVICE_ERROR,
+            ),
+        }
+    }
+}
+
+#[derive(Debug, Serialize, strum_macros::AsRefStr)]
+#[serde(tag = "message", content = "detail")]
+#[allow(non_camel_case_types, dead_code)]
+pub enum ClientError {
+    LOGIN_FAIL,
+    NO_AUTH,
+    ENTITY_NOT_FOUND { entity: &'static str, id: i64 },
+
+    SERVICE_ERROR,
+}
+// endregion: --- Client Error

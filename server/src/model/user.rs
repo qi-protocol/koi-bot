@@ -34,19 +34,15 @@ impl shared_trait::DatabaseController for UserBackendManagerController {
 
 impl UserBackendManagerController {
     /// Gets a user by id
-    pub async fn get<E>(ctx: &Ctx, mm: &ModelManager, id: i64) -> Result<E>
+    pub async fn get<E>(mm: &ModelManager, id: i64) -> Result<E>
     where
         E: UserBy,
     {
-        shared_trait::get::<Self, _>(ctx, mm, id).await
+        shared_trait::get::<Self, _>(mm, id).await
     }
 
     /// Gets a user by username
-    pub async fn first_by_username<E>(
-        _ctx: &Ctx,
-        mm: &ModelManager,
-        username: &str,
-    ) -> Result<Option<E>>
+    pub async fn first_by_username<E>(mm: &ModelManager, username: &str) -> Result<Option<E>>
     where
         E: UserBy,
     {
@@ -74,13 +70,12 @@ mod tests {
     async fn test_first_ok_demo1() -> Result<()> {
         // Setup & Fixtures
         let mm = _dev_utils::init_test().await;
-        let ctx = Ctx::root_ctx();
 
         // Inserted in the 02-dev-seed.sql
         let fx_username = "demo1";
 
         // Exec
-        let user: User = UserBackendManagerController::first_by_username(&ctx, &mm, fx_username)
+        let user: User = UserBackendManagerController::first_by_username(&mm, fx_username)
             .await?
             .context("Should have user 'demo1'")?;
 

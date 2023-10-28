@@ -27,16 +27,24 @@ impl shared_trait::DatabaseController for TaskBackendManagerController {
 }
 
 impl TaskBackendManagerController {
-    pub async fn create(ctx: &Ctx, mm: &ModelManager, task_c: TaskCreate) -> Result<i64> {
-        shared_trait::create::<Self, _>(ctx, mm, task_c).await
+    pub async fn create(mm: &ModelManager, task_c: TaskCreate) -> Result<i64> {
+        shared_trait::create::<Self, _>(mm, task_c).await
     }
 
-    pub async fn get(ctx: &Ctx, mm: &ModelManager, id: i64) -> Result<Task> {
-        shared_trait::get::<Self, _>(ctx, mm, id).await
+    pub async fn get(mm: &ModelManager, id: i64) -> Result<Task> {
+        shared_trait::get::<Self, _>(mm, id).await
     }
 
-    pub async fn list(ctx: &Ctx, mm: &ModelManager) -> Result<Vec<Task>> {
-        shared_trait::list::<Self, _>(ctx, mm).await
+    pub async fn list(mm: &ModelManager) -> Result<Vec<Task>> {
+        shared_trait::list::<Self, _>(mm).await
+    }
+
+    pub async fn update(mm: &ModelManager, id: i64, task_u: TaskUpdate) -> Result<()> {
+        shared_trait::update::<Self, _>(mm, id, task_u).await
+    }
+
+    pub async fn delete(mm: &ModelManager, id: i64) -> Result<()> {
+        shared_trait::delete::<Self>(mm, id).await
     }
 }
 
@@ -62,7 +70,7 @@ mod tests {
         let task_c = TaskCreate {
             title: fx_title.to_string(),
         };
-        let id = TaskBackendManagerController::create(&ctx, &mm, task_c).await?;
+        let id = TaskBackendManagerController::create(&mm, task_c).await?;
 
         // Check
         let (title,): (String,) = sqlx::query_as("SELECT title from task where id = $1")

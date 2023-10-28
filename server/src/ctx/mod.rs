@@ -1,4 +1,5 @@
 #![allow(unused)]
+
 mod error;
 
 pub use self::error::{Error, Result};
@@ -8,7 +9,7 @@ pub struct Ctx {
     user_id: i64,
 }
 
-/// Constructors.
+// Constructors.
 impl Ctx {
     pub fn root_ctx() -> Self {
         Ctx { user_id: 0 }
@@ -23,7 +24,7 @@ impl Ctx {
     }
 }
 
-/// Property Accessors.
+// Property Accessors.
 impl Ctx {
     pub fn user_id(&self) -> i64 {
         self.user_id

@@ -13,16 +13,16 @@ pub trait DatabaseController {
 /// Creates an entity in the database
 /// C: DatabaseController
 /// E: Entity
-pub async fn create<MC, E>(_ctx: &Ctx, mm: &ModelManager, data: E) -> Result<i64>
+pub async fn create<C, E>(mm: &ModelManager, data: E) -> Result<i64>
 where
-    MC: DatabaseController,
+    C: DatabaseController,
     E: HasFields,
 {
     let db = mm.db();
 
     let fields = data.not_none_fields();
     let (id,) = sqlb::insert()
-        .table(MC::TABLE)
+        .table(C::TABLE)
         .data(fields)
         .returning(&["id"])
         .fetch_one::<_, (i64,)>(db)
@@ -34,7 +34,7 @@ where
 /// Gets and item from the database by id
 /// C: DatabaseController
 /// E: Entity
-pub async fn get<C, E>(_ctx: &Ctx, mm: &ModelManager, id: i64) -> Result<E>
+pub async fn get<C, E>(mm: &ModelManager, id: i64) -> Result<E>
 where
     C: DatabaseController,
     E: for<'a> FromRow<'a, PgRow> + Send + Sync + Unpin,
@@ -58,7 +58,7 @@ where
 /// Lists items from the database
 /// C: DatabaseController
 /// E: Entity
-pub async fn list<C, E>(_ctx: &Ctx, mm: &ModelManager) -> Result<Vec<E>>
+pub async fn list<C, E>(mm: &ModelManager) -> Result<Vec<E>>
 where
     C: DatabaseController,
     E: for<'r> FromRow<'r, PgRow> + Unpin + Send,
@@ -76,16 +76,16 @@ where
     Ok(entities)
 }
 
-pub async fn update<MC, E>(_ctx: &Ctx, mm: &ModelManager, id: i64, data: E) -> Result<()>
+pub async fn update<C, E>(mm: &ModelManager, id: i64, data: E) -> Result<()>
 where
-    MC: DatabaseController,
+    C: DatabaseController,
     E: HasFields,
 {
     let db = mm.db();
 
     let fields = data.not_none_fields();
     let count = sqlb::update()
-        .table(MC::TABLE)
+        .table(C::TABLE)
         .and_where("id", "=", id)
         .data(fields)
         .exec(db)
@@ -93,7 +93,7 @@ where
 
     if count == 0 {
         Err(Error::EntityNotFound {
-            entity: MC::TABLE,
+            entity: C::TABLE,
             id,
         })
     } else {
@@ -101,21 +101,21 @@ where
     }
 }
 
-pub async fn delete<MC>(_ctx: &Ctx, mm: &ModelManager, id: i64) -> Result<()>
+pub async fn delete<C>(mm: &ModelManager, id: i64) -> Result<()>
 where
-    MC: DatabaseController,
+    C: DatabaseController,
 {
     let db = mm.db();
 
     let count = sqlb::delete()
-        .table(MC::TABLE)
+        .table(C::TABLE)
         .and_where("id", "=", id)
         .exec(db)
         .await?;
 
     if count == 0 {
         Err(Error::EntityNotFound {
-            entity: MC::TABLE,
+            entity: C::TABLE,
             id,
         })
     } else {

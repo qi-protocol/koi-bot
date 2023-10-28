@@ -26,6 +26,10 @@ dotenv = "0.15.0"
 hashbrown = "0.14"
 parking_lot = "0.12.1"
 tonic = "0.10.2"
+# -- json
+serde_with = { version = "3.4.0", features = ["json"] }
+serde = {version = "1", features = ["derive"]}
+serde_json = { workspace = true }
 # -- tracing
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
